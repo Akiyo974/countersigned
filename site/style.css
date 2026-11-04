@@ -322,6 +322,7 @@ main { padding-right: calc(var(--tape-w) + 8px); }
   main { padding-right: 0; }
   .foot { padding-right: var(--gutter); }
   .hero, .contract, .drift { grid-template-columns: 1fr; }
+  .hero h1.display { font-size: clamp(56px, 12vw, 132px); }
   .plan { transform: none; }
 }
 @media (max-width: 720px) {
