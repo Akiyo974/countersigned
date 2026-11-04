@@ -34,10 +34,11 @@ function normalize(value: unknown, path: string): unknown {
     const kind = (value as object).constructor?.name ?? "object";
     throw new TypeError(`${path}: a ${kind} is not plain JSON data; convert it (e.g. a Date to an ISO string, a Map to an object)`);
   }
+  // defineProperty, not assignment: an own "__proto__" key must stay data, never set a prototype.
   const out: Record<string, unknown> = {};
   for (const key of Object.keys(value).sort()) {
     const v = (value as Record<string, unknown>)[key];
-    if (v !== undefined) out[key] = normalize(v, `${path}.${key}`);
+    if (v !== undefined) Object.defineProperty(out, key, { value: normalize(v, `${path}.${key}`), enumerable: true, writable: true, configurable: true });
   }
   return out;
 }

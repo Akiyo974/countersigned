@@ -169,6 +169,8 @@ export interface Plan {
    * tail was cut off, which a hash chain alone cannot notice. Not covered by the plan hash.
    */
   ledgerHead?: { seq: number; hash: string };
+  /** Random token of the caller currently allowed to run steps (set by apply, taken over by resume). */
+  applyOwner?: string;
 }
 
 export type LedgerEventType =

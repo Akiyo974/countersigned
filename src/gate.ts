@@ -266,14 +266,16 @@ export class Gate {
       throw new GateError("EXPIRED", `Plan ${id} expired at ${plan.expiresAt} before it was applied. Plan again.`);
     }
     await this.recheck(plan);
-    // Compare-and-set: exactly one caller moves approved -> applying. Every other concurrent apply is refused.
+    // Compare-and-set: exactly one caller moves approved -> applying and becomes the owner.
+    // Every other concurrent apply is refused.
+    const owner = newId("own");
     await this.store.updatePlan(id, (p) => {
       if (p.status !== "approved") throw new GateError("APPLY_IN_PROGRESS", `Plan ${id} is already being applied by another caller.`);
-      return { ...p, status: "applying", updatedAt: now.toISOString() };
+      return { ...p, status: "applying", applyOwner: owner, updatedAt: now.toISOString() };
     });
-    await this.store.appendLedger({ type: "apply.started", planId: id, at: now.toISOString() });
+    await this.head(id, await this.store.appendLedger({ type: "apply.started", planId: id, at: now.toISOString() }));
 
-    return this.execute(plan);
+    return this.execute(plan, owner);
   }
 
   /**
@@ -284,7 +286,7 @@ export class Gate {
    * its verify() is asked against the real system. If it confirms, the step counts as done;
    * otherwise it is NOT run again and is reported for a human.
    */
-  async resume(id: string, opts: { by: string }): Promise<ApplyReport> {
+  async resume(id: string, opts: { by: string; ignoreDrift?: boolean; allowExpired?: boolean }): Promise<ApplyReport> {
     const by = opts.by?.trim();
     if (!by) throw new GateError("NOT_APPROVED", "resume() must name the operator.");
     const plan = await this.get(id);
@@ -293,8 +295,57 @@ export class Gate {
       throw new GateError("ALREADY_DECIDED", `Plan ${id} is "${plan.status}", there is nothing to resume.`);
     }
     assertIntact(plan);
-    await this.store.appendLedger({ type: "apply.resumed", planId: id, at: this.clock().toISOString(), data: { by } });
-    return this.execute(plan, true);
+
+    const now = this.clock();
+    if (now.getTime() > Date.parse(plan.expiresAt) && !opts.allowExpired) {
+      throw new GateError(
+        "EXPIRED",
+        `Plan ${id} expired at ${plan.expiresAt}. Resuming would act on an approval that has lapsed; pass { allowExpired: true } if you have checked it.`,
+      );
+    }
+
+    // Steps that never started must still match the approved state, as in a normal apply.
+    const ledger = await this.store.readLedger({ planId: id });
+    const started = new Set(ledger.filter((e) => e.type === "step.intent").map((e) => e.step));
+    if (!opts.ignoreDrift) {
+      const drifts: Drift[] = [];
+      for (const step of plan.steps.filter((s) => !started.has(s.index))) {
+        const action = this.action(step.action);
+        const current = await action.observe(action.input.parse(step.input), { planId: id, step: step.index });
+        if (hashValue(current) !== step.stateHash) drifts.push({ step: step.index, action: step.action, approved: step.before, current });
+      }
+      if (drifts.length) {
+        throw new GateError(
+          "STALE_STATE",
+          `Not resumed: state changed for steps that have not run yet (${drifts.map((d) => `step ${d.step} ${d.action}`).join(", ")}). ` +
+            `If the change comes from earlier steps of this same plan, pass { ignoreDrift: true }.`,
+          drifts,
+        );
+      }
+    }
+
+    // Take ownership atomically from whoever held it. A second resume, or the original apply if it
+    // is in fact still alive, sees the owner change and stops before its next step.
+    const previous = plan.applyOwner;
+    const owner = newId("own");
+    await this.store.updatePlan(id, (p) => {
+      if (p.status !== "applying" || p.applyOwner !== previous) {
+        throw new GateError("APPLY_IN_PROGRESS", `Plan ${id} was taken over by another caller while resuming.`);
+      }
+      return { ...p, applyOwner: owner, updatedAt: now.toISOString() };
+    });
+    await this.head(id, await this.store.appendLedger({ type: "apply.resumed", planId: id, at: now.toISOString(), data: { by, ignoreDrift: !!opts.ignoreDrift, allowExpired: !!opts.allowExpired } }));
+    return this.execute(plan, owner, true);
+  }
+
+  private async head(id: string, entry: LedgerEntry): Promise<void> {
+    await recordHead(this.store, id, entry);
+  }
+
+  /** True while `owner` still owns the apply. Checked before every step. */
+  private async stillOwner(id: string, owner: string): Promise<boolean> {
+    const p = await this.store.getPlan(id);
+    return p?.status === "applying" && p.applyOwner === owner;
   }
 
   /** Time-of-check vs time-of-use: refuse if any observed state moved since the plan was made. */
@@ -314,9 +365,13 @@ export class Gate {
 
     const at = this.clock().toISOString();
     // Only an approved plan becomes stale; never overwrite a status another caller has moved on.
-    await this.store.updatePlan(plan.id, (p) => (p.status === "approved" ? { ...p, status: "stale", updatedAt: at } : p));
-    const e = await this.store.appendLedger({ type: "plan.stale", planId: plan.id, at, data: { drifts, violations } });
-    await recordHead(this.store, plan.id, e);
+    let moved = false;
+    await this.store.updatePlan(plan.id, (p) => {
+      if (p.status !== "approved") return p;
+      moved = true;
+      return { ...p, status: "stale", updatedAt: at };
+    });
+    if (moved) await this.head(plan.id, await this.store.appendLedger({ type: "plan.stale", planId: plan.id, at, data: { drifts, violations } }));
     if (drifts.length) {
       const which = drifts.map((d) => `step ${d.step} (${d.action})`).join(", ");
       throw new GateError(
@@ -328,7 +383,7 @@ export class Gate {
     throw new GateError("PRECONDITION_FAILED", `Refused: preconditions no longer hold. Nothing was executed.\n- ${violations.join("\n- ")}`, violations);
   }
 
-  private async execute(plan: Plan, resuming = false): Promise<ApplyReport> {
+  private async execute(plan: Plan, owner: string, resuming = false): Promise<ApplyReport> {
     const ledger = resuming ? await this.store.readLedger({ planId: plan.id }) : [];
     const succeeded = new Map<number, LedgerEntry>();
     const started = new Set<number>();
@@ -380,7 +435,7 @@ export class Gate {
         }
         if (verdict.ok) {
           Object.assign(outcome, { status: "succeeded", evidence: verdict.evidence });
-          await this.store.appendLedger({ type: "step.succeeded", planId: plan.id, step: step.index, key, data: { reconciled: true, evidence: verdict.evidence } });
+          await this.head(plan.id, await this.store.appendLedger({ type: "step.succeeded", planId: plan.id, step: step.index, key, data: { reconciled: true, evidence: verdict.evidence } }));
           done.push({ index: step.index, result: undefined });
           continue;
         }
@@ -391,8 +446,11 @@ export class Gate {
         break;
       }
 
-      // Write-ahead: the intent is on record before the side effect can happen.
-      await this.store.appendLedger({ type: "step.intent", planId: plan.id, step: step.index, key, data: { action: step.action, input } });
+      if (!(await this.stillOwner(plan.id, owner))) {
+        throw new GateError("APPLY_IN_PROGRESS", `Plan ${plan.id} was taken over by resume(); this caller stopped before step ${step.index}.`);
+      }
+      // Write-ahead: the intent is on record (and anchored on the plan) before the side effect can happen.
+      await this.head(plan.id, await this.store.appendLedger({ type: "step.intent", planId: plan.id, step: step.index, key, data: { action: step.action, input } }));
 
       let result: unknown;
       try {
@@ -430,7 +488,7 @@ export class Gate {
       }
 
       Object.assign(outcome, { status: "succeeded", result, evidence: verdict.evidence });
-      await this.store.appendLedger({ type: "step.succeeded", planId: plan.id, step: step.index, key, data: { result, evidence: verdict.evidence } });
+      await this.head(plan.id, await this.store.appendLedger({ type: "step.succeeded", planId: plan.id, step: step.index, key, data: { result, evidence: verdict.evidence } }));
       done.push({ index: step.index, result });
     }
 
@@ -487,7 +545,10 @@ export class Gate {
 
     const report: ApplyReport = { planId: plan.id, status, steps: outcomes, unrecoverable, message };
     const at = this.clock().toISOString();
-    await this.store.updatePlan(plan.id, (p) => ({ ...p, status, report, updatedAt: at }));
+    await this.store.updatePlan(plan.id, (p) => {
+      if (p.applyOwner !== owner) throw new GateError("APPLY_IN_PROGRESS", `Plan ${plan.id} was taken over by resume() before this caller finished.`);
+      return { ...p, status, report, updatedAt: at };
+    });
     const e = await this.store.appendLedger({ type: "apply.finished", planId: plan.id, at, data: { status, unrecoverable } });
     await recordHead(this.store, plan.id, e);
     return report;

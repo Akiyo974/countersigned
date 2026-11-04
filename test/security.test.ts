@@ -112,3 +112,87 @@ describe("MCP server survives malformed JSON-RPC (an agent cannot crash it mid-a
     }
   });
 });
+
+describe("resume() hardening (second review)", () => {
+  async function interrupted(opts: { now?: () => Date } = {}) {
+    const erp = new FakeErp();
+    const store = new MemoryStore();
+    const gate = new Gate({ store, clock: opts.now }).register(...erpActions(erp));
+    const plan = await gate.plan(
+      [
+        { action: "set_reorder_point", input: { sku: "WASH-120", reorderPoint: 8 } },
+        { action: "set_reorder_point", input: { sku: "FRIDGE-300", reorderPoint: 7 } },
+      ],
+      { intent: "x" },
+    );
+    await gate.approve(plan.id, { by: "alice" });
+    await store.updatePlan(plan.id, (p) => ({ ...p, status: "applying", applyOwner: "own_dead" }));
+    return { erp, store, gate, plan };
+  }
+
+  it("two concurrent resumes: exactly one executes", async () => {
+    const { gate, store, plan } = await interrupted();
+    const results = await Promise.allSettled([gate.resume(plan.id, { by: "ops1" }), gate.resume(plan.id, { by: "ops2" })]);
+    const intents = (await store.readLedger({ planId: plan.id })).filter((e) => e.type === "step.intent");
+    assert.equal(intents.length, 2, "each step started once");
+    assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+  });
+
+  it("refuses to resume over drifted state of steps that never ran", async () => {
+    const { erp, gate, plan } = await interrupted();
+    erp.setReorderPoint("FRIDGE-300", 4);
+    await assert.rejects(gate.resume(plan.id, { by: "ops" }), (e: unknown) => e instanceof Error && /STALE|state changed/.test(String((e as { code?: string }).code) + e.message));
+    assert.equal(erp.getItem("WASH-120")!.reorderPoint, 5, "nothing ran");
+  });
+
+  it("refuses to resume an expired plan unless told to", async () => {
+    let now = new Date("2026-11-04T10:00:00Z");
+    const { gate, plan } = await interrupted({ now: () => now });
+    now = new Date("2026-11-05T10:00:00Z");
+    await assert.rejects(gate.resume(plan.id, { by: "ops" }), /expired/);
+    const report = await gate.resume(plan.id, { by: "ops", allowExpired: true });
+    assert.equal(report.status, "applied");
+  });
+
+  it("a still-running apply stops before its next step once resume takes over", async () => {
+    const erp = new FakeErp();
+    const store = new MemoryStore();
+    const gate = new Gate({ store }).register(...erpActions(erp));
+    const plan = await gate.plan(
+      [
+        { action: "set_reorder_point", input: { sku: "WASH-120", reorderPoint: 8 } },
+        { action: "set_reorder_point", input: { sku: "FRIDGE-300", reorderPoint: 7 } },
+      ],
+      { intent: "x" },
+    );
+    await gate.approve(plan.id, { by: "alice" });
+    // While step 0 executes, an operator (wrongly) resumes.
+    const orig = erp.setReorderPoint.bind(erp);
+    let resumed: Promise<unknown> | undefined;
+    erp.setReorderPoint = (sku, v) => {
+      orig(sku, v);
+      if (!resumed) resumed = gate.resume(plan.id, { by: "ops", ignoreDrift: true });
+    };
+    await assert.rejects(gate.apply(plan.id), /taken over/);
+    await resumed;
+    const intents = (await store.readLedger({ planId: plan.id })).filter((e) => e.type === "step.intent").map((e) => e.step);
+    assert.deepEqual(intents.sort(), [0, 1], "no step started twice");
+  });
+
+  it("an own __proto__ key is hashed as data, not dropped", () => {
+    const evil = JSON.parse('{"a":{"__proto__":{"x":1}}}');
+    assert.notEqual(canonicalJson(evil), canonicalJson({ a: {} }));
+    assert.throws(() => t.unknown().parse(evil), /forbidden key/);
+  });
+
+  it("detects truncation in the middle of an apply", async () => {
+    const { store, gate, plan } = await interrupted();
+    await gate.resume(plan.id, { by: "ops" });
+    const raw = store.rawLedger();
+    const firstIntent = raw.findIndex((e) => e.planId === plan.id && e.type === "step.intent");
+    raw.splice(firstIntent); // cut everything from the first step onwards
+    await store.updatePlan(plan.id, (p) => ({ ...p, status: "applying", report: undefined }));
+    // The plan still remembers how far its ledger reached.
+    assert.equal((await verifyStore(store)).ok, false);
+  });
+});

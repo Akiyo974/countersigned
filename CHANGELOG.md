@@ -12,6 +12,7 @@
 - `t.number()` requires finite numbers; object schemas no longer accept inherited names such as `__proto__` as keys.
 - Ledger truncation is detected: plans record their last ledger entry, checked by `verifyStore()` and `countersigned ledger verify`. New `ledger head` and `ledger verify --head` for external anchoring.
 - FileStore breaks stale locks atomically.
+- Second review: `resume()` takes ownership with a compare-and-set (a concurrent resume or a still-running apply stops before its next step), re-checks drift and expiry for steps that never started, plans record their ledger head after every step, an own `__proto__` key is hashed as data, and `t.unknown()` refuses prototype keys.
 
 ### Added
 

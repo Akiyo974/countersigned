@@ -182,11 +182,30 @@ function optional<T>(s: Schema<T>): Schema<T | undefined> & { readonly optional:
   return { ...s, optional: true } as Schema<T | undefined> & { readonly optional: true };
 }
 
-/** Accepts any JSON value. Use sparingly: an agent with an `unknown` parameter can send anything. */
+const FORBIDDEN_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+function findForbiddenKey(v: unknown, path: string): string | undefined {
+  if (v === null || typeof v !== "object") return undefined;
+  for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+    if (FORBIDDEN_KEYS.has(k)) return join(path, k);
+    const deeper = findForbiddenKey(x, Array.isArray(v) ? `${path}[${k}]` : join(path, k));
+    if (deeper) return deeper;
+  }
+  return undefined;
+}
+
+/**
+ * Accepts any JSON value. Use sparingly: an agent with an `unknown` parameter can send anything.
+ * Keys that can reach object prototypes (`__proto__`, `constructor`, `prototype`) are refused.
+ */
 function unknown(opts: { description?: string } = {}): Schema<unknown> {
   const json: JsonSchema = {};
   if (opts.description) json.description = opts.description;
-  return make(json, (v) => v);
+  return make(json, (v, path, issues) => {
+    const bad = findForbiddenKey(v, path);
+    if (bad) issues.push({ path: bad, message: "forbidden key" });
+    return v;
+  });
 }
 
 /** Wraps an external validator (zod, valibot, ajv...) so you can keep the schema library you already use. */
