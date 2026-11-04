@@ -1,4 +1,4 @@
-import { GateError } from "./errors.ts";
+import { GateError, NotAppliedError } from "./errors.ts";
 import { hashValue, newId, sha256 } from "./hash.ts";
 import { verifyChain, type ChainCheck } from "./ledger.ts";
 import { approvePlan, assertIntact, computePlanHash, rejectPlan, type DecideOptions } from "./plan.ts";
@@ -294,7 +294,7 @@ export class Gate {
 
     const outcomes: StepOutcome[] = plan.steps.map((s) => ({ index: s.index, action: s.action, status: "not_run" }));
     const done: { index: number; result: unknown }[] = [];
-    let failure: { index: number; error: string; result?: unknown; executed: boolean } | undefined;
+    let failure: { index: number; error: string; result?: unknown; executed: boolean; notApplied?: boolean } | undefined;
 
     for (const step of plan.steps) {
       const action = this.action(step.action);
@@ -318,10 +318,11 @@ export class Gate {
       try {
         result = await action.execute(input, ctx);
       } catch (e) {
+        const notApplied = e instanceof NotAppliedError;
         outcome.status = "failed";
-        outcome.error = errMsg(e);
-        await this.store.appendLedger({ type: "step.failed", planId: plan.id, step: step.index, key, data: { error: outcome.error } });
-        failure = { index: step.index, error: outcome.error, executed: false };
+        outcome.error = notApplied ? `not applied: ${errMsg(e)}` : errMsg(e);
+        await this.store.appendLedger({ type: "step.failed", planId: plan.id, step: step.index, key, data: { error: outcome.error, notApplied } });
+        failure = { index: step.index, error: outcome.error, executed: false, notApplied };
         break;
       }
 
@@ -362,7 +363,7 @@ export class Gate {
       // (so it ran, but reality does not match). If execute() threw, its effect is unknown.
       const toUndo: { index: number; result: unknown }[] = [...done].reverse();
       if (failure.executed) toUndo.unshift({ index: failure.index, result: failure.result });
-      else if (plan.steps[failure.index]!.reversibility !== "read") {
+      else if (!failure.notApplied && plan.steps[failure.index]!.reversibility !== "read") {
         unrecoverable.push({
           index: failure.index,
           action: plan.steps[failure.index]!.action,

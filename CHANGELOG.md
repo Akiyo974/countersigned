@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `NotAppliedError`: let `execute()` say "the system refused, nothing happened" so the gate rolls back cleanly instead of reporting an unknown outcome
+- `examples/rest`: ETag / If-Match and Idempotency-Key pattern that closes the window between recheck and write, with tests against a real HTTP server
+- `SqliteStore` (`countersigned/sqlite`) on Node's built-in `node:sqlite`, safe across processes
+
 ## 0.1.0 (2026-11-04)
 
 First release.

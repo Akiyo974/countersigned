@@ -1,5 +1,5 @@
 export { defineAction } from "./action.ts";
-export { GateError, type GateErrorCode } from "./errors.ts";
+export { GateError, NotAppliedError, type GateErrorCode } from "./errors.ts";
 export { Gate, type Drift, type PlanOptions, type GateOptions } from "./gate.ts";
 export { canonicalJson, hashValue } from "./hash.ts";
 export { verifyChain, type ChainCheck } from "./ledger.ts";

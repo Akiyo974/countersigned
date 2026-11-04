@@ -140,6 +140,19 @@ npx countersigned approve pl_...       # signs this exact plan hash
 npx countersigned ledger verify        # chain intact?
 ```
 
+## Storage
+
+```ts
+import { FileStore, MemoryStore } from "countersigned";
+import { SqliteStore } from "countersigned/sqlite";
+
+new MemoryStore();                  // tests
+new FileStore(".countersigned");    // plain files, zero setup
+new SqliteStore("countersigned.db"); // transactional, built on node:sqlite (still zero dependencies)
+```
+
+Any database works: a `Store` is six async methods (`createPlan`, `getPlan`, `updatePlan`, `listPlans`, `appendLedger`, `readLedger`).
+
 ## Policies
 
 Rules are plain functions `(step, plan) => { decision, reason } | undefined`. Strictest opinion wins and `deny` can never be relaxed. With no rules: reads run, every write waits for a human.
@@ -157,21 +170,22 @@ Built in: `autoApprove`, `requireApproval`, `deny`, `irreversibleNeedsApproval`,
 Honest list, because safety tooling that oversells is worse than none.
 
 - **Drift detection is as good as your `observe()`.** Observe exactly what the action depends on, from the source of truth.
-- **The recheck is time-of-check.** A change between the recheck and the write is still possible; pass the idempotency key and use your system's own concurrency control (ETags, row versions) in `execute` to close that window.
+- **The gate's recheck is time-of-check.** A change between the recheck and the write is still possible unless the target system can refuse it. Keep the version (ETag, row version) in `observe()` and send it with the write (`If-Match`): the server then rejects any last-instant change, and `execute()` throws `NotAppliedError` so the gate rolls back cleanly. [`examples/rest`](examples/rest) shows the full pattern, tested.
 - **Compensation is not a transaction.** It is a best effort correction. That is why reversibility is declared per action, and irreversible effects that already happened are reported as `unrecoverable` instead of hidden.
-- **If `execute()` throws, the outcome is unknown.** countersigned does not guess: the step is reported for a human, the key lets you look it up.
+- **If `execute()` throws, the outcome is unknown.** countersigned does not guess: the step is reported for a human, the key lets you look it up. When you *know* nothing happened (a 409, 412 or 422 from the API), throw `NotAppliedError` instead.
 - **On resume after a crash**, finished steps are skipped and the up-front recheck is not repeated (earlier steps legitimately changed the state).
-- **FileStore is single-machine.** Plans and ledger are safe across processes on one host. For several hosts, implement the `Store` interface on your database (six async methods).
+- **FileStore and SqliteStore are single-machine.** Both are safe across processes on one host. For several hosts, implement the `Store` interface on your database (six async methods).
 - **The ledger is tamper-evident, not tamper-proof.** Anyone who can rewrite the whole file can rewrite the chain. Anchor the latest hash somewhere else (a git commit, a log service) if that matters.
 
 ## Status
 
-v0.1, working and tested (33 tests, including a real MCP client loop over stdio). APIs may still move before 1.0.
+v0.1, working and tested (40 tests, including a real MCP client loop over stdio, a real HTTP API with ETags, and multi-process SQLite). APIs may still move before 1.0.
 
 ## Roadmap
 
 - [ ] Python SDK with the same plan format, so one ledger serves both ecosystems
-- [ ] Postgres and SQLite stores
+- [x] SQLite store (`countersigned/sqlite`, built on `node:sqlite`)
+- [ ] Postgres store
 - [ ] Approval channels: Slack / Teams buttons, a small web inbox, email links
 - [ ] Multi-approver and role-based policies (two signatures over 10 000 $)
 - [ ] Adapters: Dynamics 365 Business Central / NAV OData, Odoo, Shopify, Stripe, generic REST with ETags

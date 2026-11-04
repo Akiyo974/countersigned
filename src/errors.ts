@@ -27,3 +27,19 @@ export class GateError extends Error {
     this.details = details;
   }
 }
+
+/**
+ * Throw from `execute()` when you KNOW the side effect did not happen: the downstream system
+ * rejected the write before applying it (HTTP 409 / 412 / 422, a failed `If-Match`, a version
+ * conflict, a validation error). The gate then treats the step as cleanly failed instead of
+ * "outcome unknown", compensates the earlier steps and leaves nothing for a human to check.
+ *
+ * Only throw it when you are sure. When in doubt (timeouts, 5xx, dropped connections),
+ * throw a normal error: an unknown outcome is reported for a human, which is the safe default.
+ */
+export class NotAppliedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NotAppliedError";
+  }
+}
