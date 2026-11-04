@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for looking. tollgate is small on purpose; contributions that keep it that way are the most welcome. By participating you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+Thanks for looking. countersigned is small on purpose; contributions that keep it that way are the most welcome. By participating you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Setup
 
@@ -17,7 +17,7 @@ npm run demo
 
 - **Zero runtime dependencies** in the core. Adapters can live in separate packages.
 - **Erasable TypeScript only** (no enums, namespaces or parameter properties) so Node can run the sources as is.
-- **Every refusal is a `TollgateError` with a stable code** and a message written for the model reading it: say what happened and what to do next.
+- **Every refusal is a `GateError` with a stable code** and a message written for the model reading it: say what happened and what to do next.
 - **Safety behaviour needs a test that fails without it.** If you change apply, recheck, compensation or the ledger, add the scenario to `test/gate.test.ts`.
 - Prefer refusing over guessing. If an outcome is unknown, report it.
 

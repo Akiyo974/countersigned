@@ -1,4 +1,4 @@
-import { TollgateError } from "./errors.ts";
+import { GateError } from "./errors.ts";
 import { hashValue } from "./hash.ts";
 import type { Store } from "./store.ts";
 import type { Plan } from "./types.ts";
@@ -25,13 +25,13 @@ export function computePlanHash(plan: Pick<Plan, "id" | "version" | "createdAt" 
 export function assertIntact(plan: Plan): void {
   const actual = computePlanHash(plan);
   if (actual !== plan.hash) {
-    throw new TollgateError("TAMPERED", `Plan ${plan.id} was modified after it was created (hash mismatch). Create a new plan.`, {
+    throw new GateError("TAMPERED", `Plan ${plan.id} was modified after it was created (hash mismatch). Create a new plan.`, {
       expected: plan.hash,
       actual,
     });
   }
   if (plan.approval && plan.approval.planHash !== plan.hash) {
-    throw new TollgateError("TAMPERED", `Plan ${plan.id} differs from the version that was approved. Create a new plan and ask again.`);
+    throw new GateError("TAMPERED", `Plan ${plan.id} differs from the version that was approved. Create a new plan and ask again.`);
   }
 }
 
@@ -43,15 +43,15 @@ export interface DecideOptions {
 
 async function loadPending(store: Store, id: string, now: Date): Promise<Plan> {
   const plan = await store.getPlan(id);
-  if (!plan) throw new TollgateError("PLAN_NOT_FOUND", `No plan with id ${id}.`);
+  if (!plan) throw new GateError("PLAN_NOT_FOUND", `No plan with id ${id}.`);
   assertIntact(plan);
   if (plan.status !== "pending_approval") {
-    throw new TollgateError("ALREADY_DECIDED", `Plan ${id} is "${plan.status}", not waiting for approval.`);
+    throw new GateError("ALREADY_DECIDED", `Plan ${id} is "${plan.status}", not waiting for approval.`);
   }
   if (now.getTime() > Date.parse(plan.expiresAt)) {
     await store.updatePlan(id, (p) => ({ ...p, status: "expired", updatedAt: now.toISOString() }));
     await store.appendLedger({ type: "plan.expired", planId: id, at: now.toISOString() });
-    throw new TollgateError("EXPIRED", `Plan ${id} expired at ${plan.expiresAt}. The agent must plan again against fresh state.`);
+    throw new GateError("EXPIRED", `Plan ${id} expired at ${plan.expiresAt}. The agent must plan again against fresh state.`);
   }
   return plan;
 }
@@ -64,13 +64,13 @@ async function loadPending(store: Store, id: string, now: Date): Promise<Plan> {
 export async function approvePlan(store: Store, id: string, opts: DecideOptions): Promise<Plan> {
   const now = opts.now ?? new Date();
   const by = opts.by?.trim();
-  if (!by) throw new TollgateError("NOT_APPROVED", "An approval must name who approves.");
+  if (!by) throw new GateError("NOT_APPROVED", "An approval must name who approves.");
   const plan = await loadPending(store, id, now);
   if (by === plan.requestedBy) {
-    throw new TollgateError("SELF_APPROVAL", `"${by}" requested this plan and cannot approve it.`);
+    throw new GateError("SELF_APPROVAL", `"${by}" requested this plan and cannot approve it.`);
   }
   const updated = await store.updatePlan(id, (p) => {
-    if (p.status !== "pending_approval") throw new TollgateError("ALREADY_DECIDED", `Plan ${id} was decided concurrently.`);
+    if (p.status !== "pending_approval") throw new GateError("ALREADY_DECIDED", `Plan ${id} was decided concurrently.`);
     return {
       ...p,
       status: "approved",
@@ -85,10 +85,10 @@ export async function approvePlan(store: Store, id: string, opts: DecideOptions)
 export async function rejectPlan(store: Store, id: string, opts: DecideOptions & { reason: string }): Promise<Plan> {
   const now = opts.now ?? new Date();
   const by = opts.by?.trim();
-  if (!by) throw new TollgateError("NOT_APPROVED", "A rejection must name who rejects.");
+  if (!by) throw new GateError("NOT_APPROVED", "A rejection must name who rejects.");
   await loadPending(store, id, now);
   const updated = await store.updatePlan(id, (p) => {
-    if (p.status !== "pending_approval") throw new TollgateError("ALREADY_DECIDED", `Plan ${id} was decided concurrently.`);
+    if (p.status !== "pending_approval") throw new GateError("ALREADY_DECIDED", `Plan ${id} was decided concurrently.`);
     return { ...p, status: "rejected", rejection: { by, at: now.toISOString(), reason: opts.reason }, updatedAt: now.toISOString() };
   });
   await store.appendLedger({ type: "plan.rejected", planId: id, at: now.toISOString(), data: { by, reason: opts.reason } });

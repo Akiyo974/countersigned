@@ -2,7 +2,7 @@
 import { userInfo } from "node:os";
 import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
-import { TollgateError } from "./errors.ts";
+import { GateError } from "./errors.ts";
 import { short } from "./hash.ts";
 import { verifyChain } from "./ledger.ts";
 import { approvePlan, rejectPlan } from "./plan.ts";
@@ -31,18 +31,18 @@ const statusColor: Record<PlanStatus, (s: string) => string> = {
   expired: dim,
 };
 
-const HELP = `${bold("tollgate")}: the human side of the gate.
+const HELP = `${bold("countersigned")}: the human side of the gate.
 
 ${bold("Usage")}
-  tollgate list [--all]                     plans waiting for you (or every plan)
-  tollgate show <planId>                    full plan: intent, state, effects, decision
-  tollgate approve <planId> [--by NAME] [--note TEXT] [--yes]
-  tollgate reject <planId> --reason TEXT [--by NAME]
-  tollgate ledger [--plan <planId>] [--limit N]
-  tollgate ledger verify                    check the hash chain end to end
+  countersigned list [--all]                     plans waiting for you (or every plan)
+  countersigned show <planId>                    full plan: intent, state, effects, decision
+  countersigned approve <planId> [--by NAME] [--note TEXT] [--yes]
+  countersigned reject <planId> --reason TEXT [--by NAME]
+  countersigned ledger [--plan <planId>] [--limit N]
+  countersigned ledger verify                    check the hash chain end to end
 
 ${bold("Options")}
-  --dir PATH   store directory (default: $TOLLGATE_DIR or ./.tollgate)
+  --dir PATH   store directory (default: $COUNTERSIGNED_DIR or ./.countersigned)
 `;
 
 const fmt = (v: unknown) => (v === undefined ? dim("(none)") : JSON.stringify(v));
@@ -118,8 +118,8 @@ async function main(argv: string[]): Promise<number> {
     return cmd ? 0 : 1;
   }
 
-  const store = new FileStore(values.dir ?? process.env.TOLLGATE_DIR ?? ".tollgate");
-  const by = values.by ?? process.env.TOLLGATE_USER ?? userInfo().username;
+  const store = new FileStore(values.dir ?? process.env.COUNTERSIGNED_DIR ?? ".countersigned");
+  const by = values.by ?? process.env.COUNTERSIGNED_USER ?? userInfo().username;
 
   switch (cmd) {
     case "list": {
@@ -136,16 +136,16 @@ async function main(argv: string[]): Promise<number> {
       return 0;
     }
     case "show": {
-      if (!arg) throw new Error("usage: tollgate show <planId>");
+      if (!arg) throw new Error("usage: countersigned show <planId>");
       const p = await store.getPlan(arg);
-      if (!p) throw new TollgateError("PLAN_NOT_FOUND", `No plan ${arg} in ${store.dir}`);
+      if (!p) throw new GateError("PLAN_NOT_FOUND", `No plan ${arg} in ${store.dir}`);
       printPlan(p);
       return 0;
     }
     case "approve": {
-      if (!arg) throw new Error("usage: tollgate approve <planId>");
+      if (!arg) throw new Error("usage: countersigned approve <planId>");
       const p = await store.getPlan(arg);
-      if (!p) throw new TollgateError("PLAN_NOT_FOUND", `No plan ${arg} in ${store.dir}`);
+      if (!p) throw new GateError("PLAN_NOT_FOUND", `No plan ${arg} in ${store.dir}`);
       printPlan(p);
       console.log();
       if (!values.yes) {
@@ -160,7 +160,7 @@ async function main(argv: string[]): Promise<number> {
       return 0;
     }
     case "reject": {
-      if (!arg || !values.reason) throw new Error("usage: tollgate reject <planId> --reason TEXT");
+      if (!arg || !values.reason) throw new Error("usage: countersigned reject <planId> --reason TEXT");
       await rejectPlan(store, arg, { by, reason: values.reason });
       console.log(yellow(`Rejected ${arg}.`));
       return 0;
@@ -190,7 +190,7 @@ async function main(argv: string[]): Promise<number> {
 main(process.argv.slice(2)).then(
   (code) => process.exit(code),
   (e) => {
-    const msg = e instanceof TollgateError ? `[${e.code}] ${e.message}` : e instanceof Error ? e.message : String(e);
+    const msg = e instanceof GateError ? `[${e.code}] ${e.message}` : e instanceof Error ? e.message : String(e);
     console.error(red(msg));
     process.exit(1);
   },

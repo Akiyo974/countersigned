@@ -6,7 +6,7 @@ body:
     id: problem
     attributes:
       label: The problem
-      description: What are you trying to do with an agent, and where does tollgate get in the way or fall short?
+      description: What are you trying to do with an agent, and where does countersigned get in the way or fall short?
     validations:
       required: true
   - type: textarea

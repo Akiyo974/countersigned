@@ -3,21 +3,21 @@
  *
  *   node examples/erp/mcp-server.ts
  *
- * State lives in ./.tollgate (plans + ledger) and ./.tollgate/erp.json (the fake ERP),
+ * State lives in ./.countersigned (plans + ledger) and ./.countersigned/erp.json (the fake ERP),
  * so you can approve from another terminal with:  node src/cli.ts approve <planId>
  */
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { FileStore, rules, Tollgate } from "../../src/index.ts";
+import { FileStore, rules, Gate } from "../../src/index.ts";
 import { serveStdio } from "../../src/mcp.ts";
 import { erpActions } from "./actions.ts";
 import { FakeErp } from "./fake-erp.ts";
 
-const dir = process.env.TOLLGATE_DIR ?? ".tollgate";
+const dir = process.env.COUNTERSIGNED_DIR ?? ".countersigned";
 mkdirSync(dir, { recursive: true });
 const erp = new FakeErp({ file: join(dir, "erp.json") });
 
-const gate = new Tollgate({
+const gate = new Gate({
   store: new FileStore(dir),
   rules: [
     rules.irreversibleNeedsApproval(),
@@ -34,7 +34,7 @@ const gate = new Tollgate({
 }).register(...erpActions(erp));
 
 serveStdio(gate, {
-  name: "tollgate-erp-demo",
+  name: "countersigned-erp-demo",
   agentId: "mcp-agent",
   approveHint: (id) => `node src/cli.ts approve ${id}`,
 });

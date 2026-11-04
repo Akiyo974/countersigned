@@ -2,16 +2,16 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { FakeErp } from "../examples/erp/fake-erp.ts";
 import { erpActions } from "../examples/erp/actions.ts";
-import { defineAction, MemoryStore, rules, t, Tollgate, TollgateError } from "../src/index.ts";
+import { defineAction, MemoryStore, rules, t, Gate, GateError } from "../src/index.ts";
 
 function setup(opts: { rules?: Parameters<typeof rules.autoApprove>[0] extends never ? never : ReturnType<typeof rules.autoApprove>[]; now?: () => Date } = {}) {
   const erp = new FakeErp();
   const store = new MemoryStore();
-  const gate = new Tollgate({ store, rules: opts.rules, clock: opts.now }).register(...erpActions(erp));
+  const gate = new Gate({ store, rules: opts.rules, clock: opts.now }).register(...erpActions(erp));
   return { erp, store, gate };
 }
 
-const code = (c: string) => (e: unknown) => e instanceof TollgateError && e.code === c;
+const code = (c: string) => (e: unknown) => e instanceof GateError && e.code === c;
 
 describe("plan", () => {
   it("previews effects without changing anything", async () => {
@@ -40,7 +40,7 @@ describe("plan", () => {
         { intent: "x" },
       ),
       (e: unknown) => {
-        assert.ok(e instanceof TollgateError && e.code === "INVALID_INPUT");
+        assert.ok(e instanceof GateError && e.code === "INVALID_INPUT");
         assert.match(e.message, /step 0.*reorderPoint must be >= 0/s);
         assert.match(e.message, /extra unknown property/);
         assert.match(e.message, /step 1.*Unknown action "launch_rockets"/s);
@@ -71,7 +71,7 @@ describe("approval", () => {
   it("cannot apply before a human approves", async () => {
     const { gate } = setup();
     const plan = await gate.plan([{ action: "set_reorder_point", input: { sku: "FRIDGE-300", reorderPoint: 6 } }], { intent: "x" });
-    await assert.rejects(gate.apply(plan.id), (e: unknown) => code("NOT_APPROVED")(e) && /tollgate approve/.test((e as Error).message));
+    await assert.rejects(gate.apply(plan.id), (e: unknown) => code("NOT_APPROVED")(e) && /countersigned approve/.test((e as Error).message));
   });
 
   it("the requester cannot approve its own plan", async () => {
@@ -140,7 +140,7 @@ describe("apply", () => {
     erp.setReorderPoint("FRIDGE-300", 4); // a buyer edits the item in the ERP meanwhile
     await assert.rejects(gate.apply(plan.id), (e: unknown) => {
       assert.ok(code("STALE_STATE")(e));
-      const d = (e as TollgateError).details as { approved: unknown; current: unknown }[];
+      const d = (e as GateError).details as { approved: unknown; current: unknown }[];
       assert.deepEqual(d[0]!.current, { exists: true, reorderPoint: 4, onHand: 4 });
       return true;
     });
@@ -184,8 +184,8 @@ describe("apply", () => {
     const actions = erpActions(erp);
     await store.updatePlan(plan.id, (p) => ({ ...p, status: "applying" }));
     const key = (await import("../src/hash.ts")).sha256(`${plan.hash}:0`).slice(0, 32);
-    const sent = await actions[3]!.execute(plan.steps[0]!.input, { planId: plan.id, step: 0, idempotencyKey: `tg_${key}`, before: null });
-    await store.appendLedger({ type: "step.succeeded", planId: plan.id, step: 0, key: `tg_${key}`, data: { result: sent } });
+    const sent = await actions[3]!.execute(plan.steps[0]!.input, { planId: plan.id, step: 0, idempotencyKey: `cs_${key}`, before: null });
+    await store.appendLedger({ type: "step.succeeded", planId: plan.id, step: 0, key: `cs_${key}`, data: { result: sent } });
 
     const report = await gate.apply(plan.id);
     assert.equal(report.status, "applied");

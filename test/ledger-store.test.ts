@@ -5,12 +5,12 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import { FakeErp } from "../examples/erp/fake-erp.ts";
 import { erpActions } from "../examples/erp/actions.ts";
-import { approvePlan, FileStore, MemoryStore, Tollgate, verifyChain } from "../src/index.ts";
+import { approvePlan, FileStore, MemoryStore, Gate, verifyChain } from "../src/index.ts";
 
 describe("ledger", () => {
   it("records the full story of a plan, hash-chained", async () => {
     const store = new MemoryStore();
-    const gate = new Tollgate({ store }).register(...erpActions(new FakeErp()));
+    const gate = new Gate({ store }).register(...erpActions(new FakeErp()));
     const plan = await gate.plan([{ action: "set_reorder_point", input: { sku: "FRIDGE-300", reorderPoint: 6 } }], { intent: "x" });
     await gate.approve(plan.id, { by: "alice" });
     await gate.apply(plan.id);
@@ -21,7 +21,7 @@ describe("ledger", () => {
 
   it("detects edited history", async () => {
     const store = new MemoryStore();
-    const gate = new Tollgate({ store }).register(...erpActions(new FakeErp()));
+    const gate = new Gate({ store }).register(...erpActions(new FakeErp()));
     const plan = await gate.plan([{ action: "set_reorder_point", input: { sku: "FRIDGE-300", reorderPoint: 6 } }], { intent: "x" });
     await gate.approve(plan.id, { by: "alice" });
     (store.rawLedger()[1]!.data as { by: string }).by = "mallory";
@@ -32,7 +32,7 @@ describe("ledger", () => {
 
   it("detects deleted history", async () => {
     const store = new MemoryStore();
-    const gate = new Tollgate({ store }).register(...erpActions(new FakeErp()));
+    const gate = new Gate({ store }).register(...erpActions(new FakeErp()));
     await gate.plan([{ action: "get_item", input: { sku: "FRIDGE-300" } }], { intent: "x" });
     await gate.plan([{ action: "get_item", input: { sku: "WASH-120" } }], { intent: "y" });
     store.rawLedger().splice(1, 1);
@@ -42,9 +42,9 @@ describe("ledger", () => {
 
 describe("FileStore", () => {
   it("lets a separate process (the human's CLI) approve what the agent planned", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "tollgate-"));
+    const dir = mkdtempSync(join(tmpdir(), "countersigned-"));
     const erp = new FakeErp();
-    const agentSide = new Tollgate({ store: new FileStore(dir) }).register(...erpActions(erp));
+    const agentSide = new Gate({ store: new FileStore(dir) }).register(...erpActions(erp));
     const plan = await agentSide.plan([{ action: "set_reorder_point", input: { sku: "FRIDGE-300", reorderPoint: 6 } }], { intent: "x" });
 
     await approvePlan(new FileStore(dir), plan.id, { by: "alice" }); // the human, elsewhere
@@ -57,8 +57,8 @@ describe("FileStore", () => {
   });
 
   it("detects a tampered ledger file", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "tollgate-"));
-    const gate = new Tollgate({ store: new FileStore(dir) }).register(...erpActions(new FakeErp()));
+    const dir = mkdtempSync(join(tmpdir(), "countersigned-"));
+    const gate = new Gate({ store: new FileStore(dir) }).register(...erpActions(new FakeErp()));
     await gate.run("get_item", { sku: "FRIDGE-300" });
     const path = join(dir, "ledger.jsonl");
     writeFileSync(path, readFileSync(path, "utf8").replace('"plan.approved"', '"plan.rejected"'));
@@ -66,7 +66,7 @@ describe("FileStore", () => {
   });
 
   it("keeps the chain intact under concurrent appends", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "tollgate-"));
+    const dir = mkdtempSync(join(tmpdir(), "countersigned-"));
     const a = new FileStore(dir);
     const b = new FileStore(dir);
     await Promise.all(Array.from({ length: 40 }, (_, i) => (i % 2 ? a : b).appendLedger({ type: "plan.created", planId: `pl_${i}` })));

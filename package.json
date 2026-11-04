@@ -1,5 +1,5 @@
 {
-  "name": "tollgate",
+  "name": "countersigned",
   "version": "0.1.0",
   "description": "Plan / approve / apply for AI agent actions. Terraform-style safety for any tool call: drift checks, idempotency, verified completion, compensation and a tamper-evident ledger. Zero dependencies, MCP native.",
   "type": "module",
@@ -7,11 +7,11 @@
   "author": "Christen Dijoux (https://github.com/Akiyo974)",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Akiyo974/tollgate.git"
+    "url": "git+https://github.com/Akiyo974/countersigned.git"
   },
-  "homepage": "https://github.com/Akiyo974/tollgate#readme",
+  "homepage": "https://github.com/Akiyo974/countersigned#readme",
   "bugs": {
-    "url": "https://github.com/Akiyo974/tollgate/issues"
+    "url": "https://github.com/Akiyo974/countersigned/issues"
   },
   "keywords": [
     "ai-agents",
@@ -42,7 +42,7 @@
     }
   },
   "bin": {
-    "tollgate": "./dist/cli.js"
+    "countersigned": "./dist/cli.js"
   },
   "files": [
     "dist",

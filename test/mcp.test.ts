@@ -9,7 +9,7 @@ import { approvePlan, FileStore } from "../src/index.ts";
 
 /** Drives the example server as a real subprocess, exactly like an MCP client would. */
 function startServer(dir: string) {
-  const child = spawn(process.execPath, ["examples/erp/mcp-server.ts"], { env: { ...process.env, TOLLGATE_DIR: dir }, stdio: ["pipe", "pipe", "pipe"] });
+  const child = spawn(process.execPath, ["examples/erp/mcp-server.ts"], { env: { ...process.env, COUNTERSIGNED_DIR: dir }, stdio: ["pipe", "pipe", "pipe"] });
   const pending = new Map<number, (v: Record<string, unknown>) => void>();
   createInterface({ input: child.stdout }).on("line", (line) => {
     const msg = JSON.parse(line) as { id: number };
@@ -35,7 +35,7 @@ function startServer(dir: string) {
 
 describe("MCP server (stdio)", () => {
   it("full loop: plan -> blocked -> human approves out of band -> apply verified", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "tollgate-mcp-"));
+    const dir = mkdtempSync(join(tmpdir(), "countersigned-mcp-"));
     const s = startServer(dir);
     try {
       const init = (await s.rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "0" } })).result as {
@@ -44,13 +44,13 @@ describe("MCP server (stdio)", () => {
       assert.equal(init.protocolVersion, "2025-06-18");
 
       const tools = ((await s.rpc("tools/list")).result as { tools: { name: string }[] }).tools.map((t) => t.name);
-      assert.deepEqual(tools, ["tollgate_list_actions", "tollgate_plan", "tollgate_get_plan", "tollgate_apply", "tollgate_get_item"]);
+      assert.deepEqual(tools, ["countersigned_list_actions", "countersigned_plan", "countersigned_get_plan", "countersigned_apply", "countersigned_get_item"]);
       assert.ok(!tools.some((n) => n.includes("approve")), "the agent never gets an approve tool");
 
-      const item = await s.call("tollgate_get_item", { sku: "FRIDGE-300" });
+      const item = await s.call("countersigned_get_item", { sku: "FRIDGE-300" });
       assert.match(item.text, /"reorderPoint": 3/);
 
-      const planned = await s.call("tollgate_plan", {
+      const planned = await s.call("countersigned_plan", {
         intent: "Supplier delay: push SO-1001 and warn the supplier",
         steps: [
           { action: "reschedule_order", input: { orderNo: "SO-1001", shipmentDate: "2026-11-14", reason: "supplier delay" } },
@@ -61,21 +61,21 @@ describe("MCP server (stdio)", () => {
       assert.equal(planned.data!.status, "pending_approval");
       assert.match(planned.text, /ask them to run: node src\/cli\.ts approve pl_/);
 
-      const early = await s.call("tollgate_apply", { planId });
+      const early = await s.call("countersigned_apply", { planId });
       assert.equal(early.isError, true);
       assert.match(early.text, /\[NOT_APPROVED\]/);
 
       await approvePlan(new FileStore(dir), planId, { by: "christen" });
 
-      const applied = await s.call("tollgate_apply", { planId });
+      const applied = await s.call("countersigned_apply", { planId });
       assert.equal(applied.isError, false, applied.text);
       assert.match(applied.text, /APPLIED/);
       assert.match(applied.text, /evidence=\{"shipmentDate":"2026-11-14"\}/);
 
-      const small = await s.call("tollgate_plan", { intent: "tweak", steps: [{ action: "set_reorder_point", input: { sku: "WASH-120", reorderPoint: 6 } }] });
+      const small = await s.call("countersigned_plan", { intent: "tweak", steps: [{ action: "set_reorder_point", input: { sku: "WASH-120", reorderPoint: 6 } }] });
       assert.equal(small.data!.status, "approved", "small reorder change is allowed by the custom rule");
 
-      const bad = await s.call("tollgate_plan", { intent: "x", steps: [{ action: "set_reorder_point", input: { sku: "WASH-120" } }] });
+      const bad = await s.call("countersigned_plan", { intent: "x", steps: [{ action: "set_reorder_point", input: { sku: "WASH-120" } }] });
       assert.equal(bad.isError, true);
       assert.match(bad.text, /\[INVALID_INPUT\].*reorderPoint is required/s);
 

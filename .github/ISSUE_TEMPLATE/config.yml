@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/Akiyo974/tollgate/security/advisories/new
+    url: https://github.com/Akiyo974/countersigned/security/advisories/new
     about: Report safety bypasses privately, never in a public issue.
   - name: Questions and ideas
-    url: https://github.com/Akiyo974/tollgate/discussions
+    url: https://github.com/Akiyo974/countersigned/discussions
     about: Ask how to model an action, share what you built.

@@ -1,6 +1,6 @@
 import { createInterface } from "node:readline";
-import { TollgateError } from "./errors.ts";
-import type { Tollgate } from "./gate.ts";
+import { GateError } from "./errors.ts";
+import type { Gate } from "./gate.ts";
 import type { JsonSchema } from "./schema.ts";
 import type { ApplyReport, Plan } from "./types.ts";
 
@@ -15,7 +15,7 @@ import type { ApplyReport, Plan } from "./types.ts";
 export interface McpOptions {
   name?: string;
   version?: string;
-  /** Prefix for every tool name. Default "tollgate_". */
+  /** Prefix for every tool name. Default "countersigned_". */
   toolPrefix?: string;
   /** Identity recorded as requester of every plan made through this server. */
   agentId?: string;
@@ -86,10 +86,10 @@ export function describeReport(r: ApplyReport): string {
   return lines.join("\n");
 }
 
-export function createMcpServer(gate: Tollgate, opts: McpOptions = {}) {
-  const prefix = opts.toolPrefix ?? "tollgate_";
+export function createMcpServer(gate: Gate, opts: McpOptions = {}) {
+  const prefix = opts.toolPrefix ?? "countersigned_";
   const agentId = opts.agentId ?? "mcp-agent";
-  const approveHint = opts.approveHint ?? ((id: string) => `npx tollgate approve ${id}`);
+  const approveHint = opts.approveHint ?? ((id: string) => `npx countersigned approve ${id}`);
   const actions = gate.actions();
   const names = actions.map((a) => a.name);
 
@@ -191,7 +191,7 @@ export function createMcpServer(gate: Tollgate, opts: McpOptions = {}) {
         return reply({
           protocolVersion: SUPPORTED_VERSIONS.includes(requested) ? requested : SUPPORTED_VERSIONS[1],
           capabilities: { tools: { listChanged: false } },
-          serverInfo: { name: opts.name ?? "tollgate", version: opts.version ?? "0.1.0" },
+          serverInfo: { name: opts.name ?? "countersigned", version: opts.version ?? "0.1.0" },
           instructions:
             "Every change to the business system goes through a plan. Read freely; to change anything, call plan, " +
             "show the user the previewed effects, and wait for human approval when required. Then call apply. " +
@@ -217,7 +217,7 @@ export function createMcpServer(gate: Tollgate, opts: McpOptions = {}) {
             isError: out.isError ?? false,
           });
         } catch (e) {
-          const text = e instanceof TollgateError ? `[${e.code}] ${e.message}` : `Error: ${e instanceof Error ? e.message : String(e)}`;
+          const text = e instanceof GateError ? `[${e.code}] ${e.message}` : `Error: ${e instanceof Error ? e.message : String(e)}`;
           return reply({ content: [{ type: "text", text }], isError: true });
         }
       }
@@ -231,7 +231,7 @@ export function createMcpServer(gate: Tollgate, opts: McpOptions = {}) {
 }
 
 /** Serve over stdio. stdout carries protocol messages only; diagnostics go to stderr. */
-export function serveStdio(gate: Tollgate, opts: McpOptions = {}): void {
+export function serveStdio(gate: Gate, opts: McpOptions = {}): void {
   const server = createMcpServer(gate, opts);
   const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
   const write = (msg: unknown) => process.stdout.write(`${JSON.stringify(msg)}\n`);
@@ -253,5 +253,5 @@ export function serveStdio(gate: Tollgate, opts: McpOptions = {}): void {
       if (out.length) write(Array.isArray(req) ? out : out[0]);
     });
   });
-  process.stderr.write(`[tollgate] MCP server ready on stdio (${server.tools.length} tools)\n`);
+  process.stderr.write(`[countersigned] MCP server ready on stdio (${server.tools.length} tools)\n`);
 }

@@ -3,7 +3,7 @@
  *
  *   node examples/erp/demo.ts
  */
-import { MemoryStore, rules, Tollgate, TollgateError } from "../../src/index.ts";
+import { MemoryStore, rules, Gate, GateError } from "../../src/index.ts";
 import { describePlan, describeReport } from "../../src/mcp.ts";
 import { erpActions } from "./actions.ts";
 import { FakeErp } from "./fake-erp.ts";
@@ -11,12 +11,12 @@ import { FakeErp } from "./fake-erp.ts";
 const tty = process.stdout.isTTY;
 const c = (n: number) => (s: string) => (tty ? `\x1b[${n}m${s}\x1b[0m` : s);
 const [bold, dim, green, red, cyan] = [c(1), c(2), c(32), c(31), c(36)];
-const hint = (id: string) => `tollgate approve ${id}`;
+const hint = (id: string) => `countersigned approve ${id}`;
 const indent = (s: string) => s.replace(/^/gm, "    ");
 
 function fresh() {
   const erp = new FakeErp();
-  const gate = new Tollgate({ store: new MemoryStore(), rules: [rules.irreversibleNeedsApproval()] }).register(...erpActions(erp));
+  const gate = new Gate({ store: new MemoryStore(), rules: [rules.irreversibleNeedsApproval()] }).register(...erpActions(erp));
   return { erp, gate };
 }
 
@@ -29,12 +29,12 @@ async function expectRefusal(p: Promise<unknown>) {
     await p;
     console.log(red("    (no refusal?!)"));
   } catch (e) {
-    if (!(e instanceof TollgateError)) throw e;
+    if (!(e instanceof GateError)) throw e;
     console.log(red(indent(`[${e.code}] ${e.message}`)));
   }
 }
 
-console.log(bold("tollgate demo: an agent working on a (fake) ERP"));
+console.log(bold("countersigned demo: an agent working on a (fake) ERP"));
 
 {
   title(1, "The happy path: plan, a human approves the exact effects, apply verifies against the ERP");
