@@ -1,7 +1,7 @@
 import { GateError, NotAppliedError } from "./errors.ts";
 import { hashValue, newId, sha256 } from "./hash.ts";
-import { verifyChain, type ChainCheck } from "./ledger.ts";
-import { approvePlan, assertIntact, computePlanHash, rejectPlan, type DecideOptions } from "./plan.ts";
+import { verifyStore, type ChainCheck } from "./ledger.ts";
+import { approvePlan, assertIntact, computePlanHash, recordHead, rejectPlan, type DecideOptions } from "./plan.ts";
 import { decideStep, strictest, type PlanFacts, type PolicyRule, type StepFacts } from "./policy.ts";
 import { ValidationError } from "./schema.ts";
 import { MemoryStore, type Store } from "./store.ts";
@@ -110,17 +110,24 @@ export class Gate {
     }
     const intent = (opts.intent ?? "").trim();
     if (!intent) throw new GateError("INVALID_INPUT", "Say what you are trying to achieve in `intent`: the approver reads it.");
+    if (intent.length > 1000) throw new GateError("INVALID_INPUT", "`intent` is limited to 1000 characters.");
+    // Control characters could rewrite what the human sees in a terminal. Refuse them outright.
+    // eslint-disable-next-line no-control-regex
+    if (/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/.test(intent)) {
+      throw new GateError("INVALID_INPUT", "`intent` must be a single line of plain text (no control or direction-override characters).");
+    }
 
     // Validate everything first and report every problem at once: one round-trip for the model.
     const problems: string[] = [];
     const parsed: { action: AnyAction; input: unknown }[] = [];
     requests.forEach((r, i) => {
       try {
+        if (r === null || typeof r !== "object" || typeof r.action !== "string") throw new Error("each step must be an object with an `action` string and an `input` object");
         const action = this.action(r.action);
         parsed.push({ action, input: action.input.parse(r.input ?? {}) });
       } catch (e) {
         const detail = e instanceof ValidationError ? e.issues.map((x) => `${x.path || "input"} ${x.message}`).join("; ") : errMsg(e);
-        problems.push(`step ${i} (${r.action}): ${detail}`);
+        problems.push(`step ${i} (${(r as StepRequest | null)?.action ?? "?"}): ${detail}`);
       }
     });
     if (problems.length) {
@@ -188,15 +195,17 @@ export class Gate {
     };
 
     await this.store.createPlan(plan);
-    await this.store.appendLedger({
+    const created = await this.store.appendLedger({
       type: "plan.created",
       planId: id,
       at: plan.createdAt,
       data: { intent, requestedBy, hash, decision, steps: steps.map((s) => ({ action: s.action, stateHash: s.stateHash })) },
     });
-    if (decision === "deny") await this.store.appendLedger({ type: "plan.denied", planId: id, at: plan.createdAt, data: { reasons: plan.reasons } });
-    if (decision === "allow") await this.store.appendLedger({ type: "plan.approved", planId: id, at: plan.createdAt, data: { by: "policy", automatic: true, planHash: hash } });
-    return plan;
+    let last: LedgerEntry | undefined = created;
+    if (decision === "deny") last = await this.store.appendLedger({ type: "plan.denied", planId: id, at: plan.createdAt, data: { reasons: plan.reasons } });
+    if (decision === "allow") last = await this.store.appendLedger({ type: "plan.approved", planId: id, at: plan.createdAt, data: { by: "policy", automatic: true, planHash: hash } });
+    if (last) await recordHead(this.store, id, last);
+    return (await this.store.getPlan(id)) ?? plan;
   }
 
   // ---------------------------------------------------------------- decide
@@ -239,23 +248,53 @@ export class Gate {
     if (!plan.approval) throw new GateError("NOT_APPROVED", `Plan ${id} has no approval.`);
 
     const now = this.clock();
-    const resuming = plan.status === "applying";
 
-    if (!resuming) {
-      if (now.getTime() > Date.parse(plan.expiresAt)) {
-        await this.store.updatePlan(id, (p) => ({ ...p, status: "expired", updatedAt: now.toISOString() }));
-        await this.store.appendLedger({ type: "plan.expired", planId: id, at: now.toISOString() });
-        throw new GateError("EXPIRED", `Plan ${id} expired at ${plan.expiresAt} before it was applied. Plan again.`);
-      }
-      await this.recheck(plan);
-      await this.store.updatePlan(id, (p) => {
-        if (p.status !== "approved") throw new GateError("ALREADY_DECIDED", `Plan ${id} is already being applied by another process.`);
-        return { ...p, status: "applying", updatedAt: now.toISOString() };
-      });
-      await this.store.appendLedger({ type: "apply.started", planId: id, at: now.toISOString() });
+    // "applying" means another apply is running, or one was interrupted. Never resume implicitly:
+    // an agent able to crash the process must not be able to re-run steps or skip the checks.
+    if (plan.status === "applying") {
+      throw new GateError(
+        "APPLY_IN_PROGRESS",
+        `Plan ${id} is being applied, or a previous apply was interrupted. Nothing was run again. ` +
+          `An operator must inspect it and call resume() once the original process is confirmed stopped.`,
+      );
     }
 
+    if (now.getTime() > Date.parse(plan.expiresAt)) {
+      await this.store.updatePlan(id, (p) => (p.status === "approved" ? { ...p, status: "expired", updatedAt: now.toISOString() } : p));
+      const e = await this.store.appendLedger({ type: "plan.expired", planId: id, at: now.toISOString() });
+      await recordHead(this.store, id, e);
+      throw new GateError("EXPIRED", `Plan ${id} expired at ${plan.expiresAt} before it was applied. Plan again.`);
+    }
+    await this.recheck(plan);
+    // Compare-and-set: exactly one caller moves approved -> applying. Every other concurrent apply is refused.
+    await this.store.updatePlan(id, (p) => {
+      if (p.status !== "approved") throw new GateError("APPLY_IN_PROGRESS", `Plan ${id} is already being applied by another caller.`);
+      return { ...p, status: "applying", updatedAt: now.toISOString() };
+    });
+    await this.store.appendLedger({ type: "apply.started", planId: id, at: now.toISOString() });
+
     return this.execute(plan);
+  }
+
+  /**
+   * Operator-only: continue a plan whose apply was interrupted (crash, kill, power loss).
+   * Not exposed over MCP. Call it only once you know the original process is gone.
+   *
+   * Finished steps are skipped. A step that started but has no recorded outcome is "in doubt":
+   * its verify() is asked against the real system. If it confirms, the step counts as done;
+   * otherwise it is NOT run again and is reported for a human.
+   */
+  async resume(id: string, opts: { by: string }): Promise<ApplyReport> {
+    const by = opts.by?.trim();
+    if (!by) throw new GateError("NOT_APPROVED", "resume() must name the operator.");
+    const plan = await this.get(id);
+    if (plan.status !== "applying") {
+      if (plan.report) return plan.report;
+      throw new GateError("ALREADY_DECIDED", `Plan ${id} is "${plan.status}", there is nothing to resume.`);
+    }
+    assertIntact(plan);
+    await this.store.appendLedger({ type: "apply.resumed", planId: id, at: this.clock().toISOString(), data: { by } });
+    return this.execute(plan, true);
   }
 
   /** Time-of-check vs time-of-use: refuse if any observed state moved since the plan was made. */
@@ -274,8 +313,10 @@ export class Gate {
     if (!drifts.length && !violations.length) return;
 
     const at = this.clock().toISOString();
-    await this.store.updatePlan(plan.id, (p) => ({ ...p, status: "stale", updatedAt: at }));
-    await this.store.appendLedger({ type: "plan.stale", planId: plan.id, at, data: { drifts, violations } });
+    // Only an approved plan becomes stale; never overwrite a status another caller has moved on.
+    await this.store.updatePlan(plan.id, (p) => (p.status === "approved" ? { ...p, status: "stale", updatedAt: at } : p));
+    const e = await this.store.appendLedger({ type: "plan.stale", planId: plan.id, at, data: { drifts, violations } });
+    await recordHead(this.store, plan.id, e);
     if (drifts.length) {
       const which = drifts.map((d) => `step ${d.step} (${d.action})`).join(", ");
       throw new GateError(
@@ -287,10 +328,17 @@ export class Gate {
     throw new GateError("PRECONDITION_FAILED", `Refused: preconditions no longer hold. Nothing was executed.\n- ${violations.join("\n- ")}`, violations);
   }
 
-  private async execute(plan: Plan): Promise<ApplyReport> {
-    const ledger = await this.store.readLedger({ planId: plan.id });
+  private async execute(plan: Plan, resuming = false): Promise<ApplyReport> {
+    const ledger = resuming ? await this.store.readLedger({ planId: plan.id }) : [];
     const succeeded = new Map<number, LedgerEntry>();
-    for (const e of ledger) if (e.type === "step.succeeded" && e.step !== undefined) succeeded.set(e.step, e);
+    const started = new Set<number>();
+    const ended = new Map<number, LedgerEntry>();
+    for (const e of ledger) {
+      if (e.step === undefined) continue;
+      if (e.type === "step.succeeded") succeeded.set(e.step, e);
+      else if (e.type === "step.intent") started.add(e.step);
+      else if (e.type === "step.failed" || e.type === "step.verify_failed") ended.set(e.step, e);
+    }
 
     const outcomes: StepOutcome[] = plan.steps.map((s) => ({ index: s.index, action: s.action, status: "not_run" }));
     const done: { index: number; result: unknown }[] = [];
@@ -309,6 +357,38 @@ export class Gate {
         Object.assign(outcome, { status: "skipped_already_done", result: d?.result, evidence: d?.evidence });
         done.push({ index: step.index, result: d?.result });
         continue;
+      }
+
+      // Resume only: a step whose failure was already recorded is not retried.
+      const priorFailure = ended.get(step.index);
+      if (priorFailure) {
+        const d = priorFailure.data as { error?: string; reason?: string; result?: unknown; notApplied?: boolean } | undefined;
+        const verifyFailed = priorFailure.type === "step.verify_failed";
+        outcome.status = "failed";
+        outcome.error = verifyFailed ? `verification failed: ${d?.reason ?? "postcondition not met"}` : (d?.error ?? "failed");
+        failure = { index: step.index, error: outcome.error, result: d?.result, executed: verifyFailed, notApplied: d?.notApplied };
+        break;
+      }
+
+      // Resume only: started, no outcome recorded. Ask the system, never re-execute blindly.
+      if (started.has(step.index)) {
+        let verdict: { ok: boolean; reason?: string; evidence?: unknown };
+        try {
+          verdict = normalizeVerdict(await action.verify(input, undefined, ctx));
+        } catch (e) {
+          verdict = { ok: false, reason: `verify() threw: ${errMsg(e)}` };
+        }
+        if (verdict.ok) {
+          Object.assign(outcome, { status: "succeeded", evidence: verdict.evidence });
+          await this.store.appendLedger({ type: "step.succeeded", planId: plan.id, step: step.index, key, data: { reconciled: true, evidence: verdict.evidence } });
+          done.push({ index: step.index, result: undefined });
+          continue;
+        }
+        outcome.status = "failed";
+        outcome.error = `in doubt after interruption: verify() could not confirm the effect (${verdict.reason ?? "no reason"}); not re-executed`;
+        await this.store.appendLedger({ type: "step.failed", planId: plan.id, step: step.index, key, data: { error: outcome.error, inDoubt: true } });
+        failure = { index: step.index, error: outcome.error, executed: false };
+        break;
       }
 
       // Write-ahead: the intent is on record before the side effect can happen.
@@ -408,7 +488,8 @@ export class Gate {
     const report: ApplyReport = { planId: plan.id, status, steps: outcomes, unrecoverable, message };
     const at = this.clock().toISOString();
     await this.store.updatePlan(plan.id, (p) => ({ ...p, status, report, updatedAt: at }));
-    await this.store.appendLedger({ type: "apply.finished", planId: plan.id, at, data: { status, unrecoverable } });
+    const e = await this.store.appendLedger({ type: "apply.finished", planId: plan.id, at, data: { status, unrecoverable } });
+    await recordHead(this.store, plan.id, e);
     return report;
   }
 
@@ -429,7 +510,8 @@ export class Gate {
     return report.steps[0]?.result;
   }
 
+  /** Checks the hash chain AND that every plan's last recorded entry is still present (catches truncation). */
   async verifyLedger(): Promise<ChainCheck> {
-    return verifyChain(await this.store.readLedger());
+    return verifyStore(this.store);
   }
 }

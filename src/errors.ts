@@ -5,6 +5,7 @@ export type GateErrorCode =
   | "PLAN_DENIED"
   | "NOT_APPROVED"
   | "ALREADY_DECIDED"
+  | "APPLY_IN_PROGRESS"
   | "EXPIRED"
   | "TAMPERED"
   | "STALE_STATE"

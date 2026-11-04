@@ -17,9 +17,10 @@ export class SqliteStore implements Store {
 
   constructor(path = "countersigned.db") {
     this.db = new DatabaseSync(path);
+    // busy_timeout first: every following statement, including the WAL switch, may meet a lock.
+    this.db.exec("PRAGMA busy_timeout = 10000;");
     this.db.exec(`
       PRAGMA journal_mode = WAL;
-      PRAGMA busy_timeout = 10000;
       PRAGMA foreign_keys = ON;
       CREATE TABLE IF NOT EXISTS plans (
         id         TEXT PRIMARY KEY,

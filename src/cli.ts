@@ -4,7 +4,8 @@ import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
 import { GateError } from "./errors.ts";
 import { short } from "./hash.ts";
-import { verifyChain } from "./ledger.ts";
+import { verifyStore } from "./ledger.ts";
+import { safe } from "./sanitize.ts";
 import { approvePlan, rejectPlan } from "./plan.ts";
 import { FileStore } from "./store.ts";
 import type { LedgerEntry, Plan, PlanStatus } from "./types.ts";
@@ -39,13 +40,14 @@ ${bold("Usage")}
   countersigned approve <planId> [--by NAME] [--note TEXT] [--yes]
   countersigned reject <planId> --reason TEXT [--by NAME]
   countersigned ledger [--plan <planId>] [--limit N]
-  countersigned ledger verify                    check the hash chain end to end
+  countersigned ledger verify [--head SEQ:HASH]  check the chain, plan records and an optional anchor
+  countersigned ledger head                      print the latest entry, to anchor elsewhere
 
 ${bold("Options")}
   --dir PATH   store directory (default: $COUNTERSIGNED_DIR or ./.countersigned)
 `;
 
-const fmt = (v: unknown) => (v === undefined ? dim("(none)") : JSON.stringify(v));
+const fmt = (v: unknown) => (v === undefined ? dim("(none)") : safe(JSON.stringify(v)));
 
 function ago(iso: string): string {
   const s = Math.round((Date.now() - Date.parse(iso)) / 1000);
@@ -58,34 +60,34 @@ function ago(iso: string): string {
 function printPlan(p: Plan): void {
   const color = statusColor[p.status];
   console.log(`${bold(`Plan ${p.id}`)}  ${color(p.status.toUpperCase())}  ${dim(`hash ${short(p.hash)}`)}`);
-  console.log(`  ${dim("intent")}     ${p.intent}`);
-  console.log(`  ${dim("requested")}  ${p.requestedBy}, ${ago(p.createdAt)}`);
+  console.log(`  ${dim("intent")}     ${safe(p.intent)}`);
+  console.log(`  ${dim("requested")}  ${safe(p.requestedBy)}, ${ago(p.createdAt)}`);
   if (p.status === "pending_approval") console.log(`  ${dim("expires")}    ${ago(p.expiresAt)}`);
-  if (p.approval) console.log(`  ${dim("approved")}   ${p.approval.automatic ? "by policy" : `by ${p.approval.by}`}${p.approval.note ? ` (${p.approval.note})` : ""}`);
-  if (p.rejection) console.log(`  ${dim("rejected")}   by ${p.rejection.by}: ${p.rejection.reason}`);
+  if (p.approval) console.log(`  ${dim("approved")}   ${p.approval.automatic ? "by policy" : `by ${safe(p.approval.by)}`}${p.approval.note ? ` (${safe(p.approval.note)})` : ""}`);
+  if (p.rejection) console.log(`  ${dim("rejected")}   by ${safe(p.rejection.by)}: ${safe(p.rejection.reason)}`);
   console.log();
   for (const s of p.steps) {
     const rev = s.reversibility === "irreversible" ? red(bold("IRREVERSIBLE")) : s.reversibility === "read" ? dim("read") : s.reversibility;
     console.log(`  ${bold(`${s.index}.`)} ${bold(s.action)}  [${rev}]  ${dim(s.decision)}`);
     for (const e of s.effects) {
       const sym = e.op === "send" ? red(">") : e.op === "delete" ? red("-") : e.op === "create" ? green("+") : e.op === "read" ? dim("·") : yellow("~");
-      console.log(`     ${sym} ${e.summary ?? `${e.op} ${e.target}`}`);
+      console.log(`     ${sym} ${safe(e.summary ?? `${e.op} ${e.target}`)}`);
       if (e.before !== undefined || e.after !== undefined) console.log(dim(`       ${fmt(e.before)} -> ${fmt(e.after)}`));
     }
-    for (const v of s.violations) console.log(`     ${red("blocked:")} ${v}`);
-    for (const r of s.reasons) console.log(dim(`     why: ${r}`));
+    for (const v of s.violations) console.log(`     ${red("blocked:")} ${safe(v)}`);
+    for (const r of s.reasons) console.log(dim(`     why: ${safe(r)}`));
   }
   if (p.report) {
     console.log();
-    console.log(`  ${bold("report")} ${p.report.message}`);
-    for (const o of p.report.steps) console.log(`     ${o.index}. ${o.action}: ${o.status}${o.error ? red(` (${o.error})`) : ""}`);
-    for (const u of p.report.unrecoverable) console.log(red(`     needs a human: step ${u.index} ${u.action}: ${u.reason}`));
+    console.log(`  ${bold("report")} ${safe(p.report.message)}`);
+    for (const o of p.report.steps) console.log(`     ${o.index}. ${o.action}: ${o.status}${o.error ? red(` (${safe(o.error)})`) : ""}`);
+    for (const u of p.report.unrecoverable) console.log(red(`     needs a human: step ${u.index} ${u.action}: ${safe(u.reason)}`));
   }
 }
 
 function printEntry(e: LedgerEntry): void {
   const step = e.step !== undefined ? ` step ${e.step}` : "";
-  const data = e.data === undefined ? "" : dim(` ${JSON.stringify(e.data).slice(0, 140)}`);
+  const data = e.data === undefined ? "" : dim(` ${safe(JSON.stringify(e.data).slice(0, 140))}`);
   console.log(`${dim(String(e.seq).padStart(5))} ${dim(e.at)} ${cyan(e.type.padEnd(24))} ${e.planId}${step}${data}`);
 }
 
@@ -106,6 +108,7 @@ async function main(argv: string[]): Promise<number> {
       note: { type: "string" },
       reason: { type: "string" },
       plan: { type: "string" },
+      head: { type: "string" },
       limit: { type: "string" },
       all: { type: "boolean" },
       yes: { type: "boolean", short: "y" },
@@ -131,7 +134,7 @@ async function main(argv: string[]): Promise<number> {
       for (const p of plans.reverse()) {
         const effects = p.steps.reduce((n, s) => n + s.effects.length, 0);
         const irr = p.steps.some((s) => s.reversibility === "irreversible") ? red(" irreversible") : "";
-        console.log(`${p.id}  ${statusColor[p.status](p.status.padEnd(16))} ${dim(ago(p.createdAt).padEnd(9))} ${p.steps.length} step(s), ${effects} effect(s)${irr}  ${p.intent}`);
+        console.log(`${p.id}  ${statusColor[p.status](p.status.padEnd(16))} ${dim(ago(p.createdAt).padEnd(9))} ${p.steps.length} step(s), ${effects} effect(s)${irr}  ${safe(p.intent)}`);
       }
       return 0;
     }
@@ -167,11 +170,28 @@ async function main(argv: string[]): Promise<number> {
     }
     case "ledger": {
       const entries = await store.readLedger(values.plan ? { planId: values.plan } : undefined);
+      if (arg === "head") {
+        const all = await store.readLedger();
+        const last = all.at(-1);
+        if (!last) {
+          console.log(dim("Ledger is empty."));
+          return 0;
+        }
+        // Publish this somewhere the host cannot rewrite (a git commit, a log service, a ticket):
+        // `ledger verify --head` then detects any later removal or rewrite up to that entry.
+        console.log(`${last.seq}:${last.hash}`);
+        return 0;
+      }
       if (arg === "verify") {
-        const all = values.plan ? await store.readLedger() : entries;
-        const check = verifyChain(all);
+        let anchor: { seq: number; hash: string } | undefined;
+        if (values.head) {
+          const m = /^(\d+):([0-9a-f]{64})$/.exec(values.head);
+          if (!m) throw new Error("--head must look like <seq>:<sha256>, as printed by `countersigned ledger head`");
+          anchor = { seq: Number(m[1]), hash: m[2]! };
+        }
+        const check = await verifyStore(store, anchor);
         if (check.ok) {
-          console.log(green(`Ledger intact: ${check.entries} entries, chain verified.`));
+          console.log(green(`Ledger intact: ${check.entries} entries, chain and plan records verified${anchor ? ", anchor matches" : ""}.`));
           return 0;
         }
         console.log(red(`Ledger BROKEN at entry ${check.brokenAt}: ${check.reason}`));

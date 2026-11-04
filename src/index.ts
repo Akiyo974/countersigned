@@ -2,7 +2,7 @@ export { defineAction } from "./action.ts";
 export { GateError, NotAppliedError, type GateErrorCode } from "./errors.ts";
 export { Gate, type Drift, type PlanOptions, type GateOptions } from "./gate.ts";
 export { canonicalJson, hashValue } from "./hash.ts";
-export { verifyChain, type ChainCheck } from "./ledger.ts";
+export { verifyChain, verifyStore, type ChainCheck } from "./ledger.ts";
 export { approvePlan, computePlanHash, rejectPlan } from "./plan.ts";
 export { decideStep, rules, type PlanFacts, type PolicyRule, type RuleResult, type StepFacts } from "./policy.ts";
 export { t, ValidationError, type Infer, type JsonSchema, type Schema } from "./schema.ts";

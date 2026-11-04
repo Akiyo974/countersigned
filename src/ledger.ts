@@ -1,4 +1,5 @@
 import { canonicalJson, sha256 } from "./hash.ts";
+import type { Store } from "./store.ts";
 import type { LedgerEntry, LedgerInput } from "./types.ts";
 
 export const GENESIS = "0".repeat(64);
@@ -37,4 +38,27 @@ export function verifyChain(entries: LedgerEntry[]): ChainCheck {
     prev = hash;
   }
   return { ok: true, entries: entries.length };
+}
+
+/**
+ * Full integrity check of a store: the chain itself, plus every plan's recorded `ledgerHead`
+ * must still be in the ledger with the same hash. A hash chain alone cannot see entries cut
+ * from its end; the plans remember where it reached. For protection against someone rewriting
+ * both, also anchor the latest head outside the host (see `countersigned ledger head`).
+ */
+export async function verifyStore(store: Store, anchor?: { seq: number; hash: string }): Promise<ChainCheck> {
+  const entries = await store.readLedger();
+  const chain = verifyChain(entries);
+  if (!chain.ok) return chain;
+  const bySeq = new Map(entries.map((e) => [e.seq, e.hash]));
+  for (const p of await store.listPlans()) {
+    const h = p.ledgerHead;
+    if (h && bySeq.get(h.seq) !== h.hash) {
+      return { ok: false, entries: entries.length, brokenAt: h.seq, reason: `plan ${p.id} records entry #${h.seq}, which is missing or different: the ledger was truncated or rewritten` };
+    }
+  }
+  if (anchor && bySeq.get(anchor.seq) !== anchor.hash) {
+    return { ok: false, entries: entries.length, brokenAt: anchor.seq, reason: `anchored entry #${anchor.seq} is missing or different` };
+  }
+  return chain;
 }

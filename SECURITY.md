@@ -11,7 +11,8 @@ countersigned is a safety layer, so a bypass is a serious bug. Examples of what 
 - applying a plan that was not approved, or that differs from the approved hash
 - an agent obtaining approval through the MCP server, or approving its own plan
 - a step executing twice for the same plan
-- a ledger edit that `verifyChain` does not detect
+- a ledger edit, insertion or deletion that `countersigned ledger verify` does not detect
+- a way for the agent to make `apply` run a step again, or skip the drift or expiry checks
 - apply proceeding despite observed drift or broken preconditions
 - path traversal or injection through plan ids, action input or MCP messages
 
@@ -29,9 +30,11 @@ What to expect:
 
 - **Untrusted:** the agent and everything it sends (tool arguments, plan content, retries).
 - **Trusted:** the operator, the host running the store, and the code of registered actions.
-- Out of scope: an attacker who already controls the host or can write the store directly. The ledger is tamper-evident, not tamper-proof; see the README for anchoring.
+- Out of scope: an attacker who already controls the host or can write the store directly. The ledger is tamper-evident, not tamper-proof; publish `countersigned ledger head` outside the host and verify with `--head` if that matters.
 
 ## Hardening checklist for deployments
+
+- Never expose `resume()` to an agent; it is an operator action, after confirming the original process is gone.
 
 - Run the MCP server with credentials scoped to the actions you registered, nothing more.
 - Keep the store directory out of the agent's reach (a coding agent with shell access must not be able to write `.countersigned/`).
