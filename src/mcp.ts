@@ -201,7 +201,7 @@ export function createMcpServer(gate: Gate, opts: McpOptions = {}) {
         return reply({
           protocolVersion: SUPPORTED_VERSIONS.includes(requested) ? requested : SUPPORTED_VERSIONS[1],
           capabilities: { tools: { listChanged: false } },
-          serverInfo: { name: opts.name ?? "countersigned", version: opts.version ?? "0.1.0" },
+          serverInfo: { name: opts.name ?? "countersigned", version: opts.version ?? "0.2.0" },
           instructions:
             "Every change to the business system goes through a plan. Read freely; to change anything, call plan, " +
             "show the user the previewed effects, and wait for human approval when required. Then call apply. " +
