@@ -1,4 +1,8 @@
-# Changelog
+<p align="center"><img src="docs/assets/header-changelog.png" alt="countersigned · Changelog" width="100%"></p>
+
+<p align="center"><sub><a href="README.md">README</a> &nbsp;·&nbsp; <a href="https://akiyo974.github.io/countersigned/">Website</a> &nbsp;·&nbsp; <a href="docs/concepts.md">Concepts</a> &nbsp;·&nbsp; <a href="CONTRIBUTING.md">Contributing</a> &nbsp;·&nbsp; <a href="SECURITY.md">Security</a></sub></p>
+
+---
 
 ## 0.2.0 (2026-11-04)
 

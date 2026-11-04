@@ -1,30 +1,47 @@
-# countersigned
+<p align="center">
+  <a href="https://akiyo974.github.io/countersigned/"><img src="docs/assets/banner.png" alt="countersigned. Your agent proposes. A human countersigns. Terraform-style plan / approve / apply for AI agent actions." width="100%"></a>
+</p>
 
-[![ci](https://github.com/Akiyo974/countersigned/actions/workflows/ci.yml/badge.svg)](https://github.com/Akiyo974/countersigned/actions/workflows/ci.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) ![dependencies: 0](https://img.shields.io/badge/dependencies-0-brightgreen.svg) ![node: >=22.18](https://img.shields.io/badge/node-%3E%3D22.18-339933.svg)
+<p align="center">
+  <a href="https://github.com/Akiyo974/countersigned/actions/workflows/ci.yml"><img alt="ci" src="https://img.shields.io/github/actions/workflow/status/Akiyo974/countersigned/ci.yml?branch=main&label=ci&style=flat-square&labelColor=141412&color=2e5e3a"></a>
+  <a href="https://www.npmjs.com/package/countersigned"><img alt="npm" src="https://img.shields.io/npm/v/countersigned?style=flat-square&labelColor=141412&color=d2381b"></a>
+  <img alt="dependencies: 0" src="https://img.shields.io/badge/dependencies-0-ece9e1?style=flat-square&labelColor=141412">
+  <img alt="node 22.18 or later" src="https://img.shields.io/badge/node-22.18%2B-ece9e1?style=flat-square&labelColor=141412">
+  <a href="LICENSE"><img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-ece9e1?style=flat-square&labelColor=141412"></a>
+</p>
 
-**Your agent proposes. A human countersigns. Then it runs, verified.**
+<p align="center">
+  <b><a href="https://akiyo974.github.io/countersigned/">Sign a plan in your browser</a></b> &nbsp;·&nbsp;
+  <a href="docs/concepts.md">Concepts</a> &nbsp;·&nbsp;
+  <a href="#-05--define-an-action">Define an action</a> &nbsp;·&nbsp;
+  <a href="#-07--use-it-as-an-mcp-server">MCP</a> &nbsp;·&nbsp;
+  <a href="CHANGELOG.md">Changelog</a>
+</p>
 
-Terraform-style `plan` / `apply` for AI agent actions. **[Try it in your browser: sign a plan yourself →](https://akiyo974.github.io/countersigned/)**
+---
 
-Your agent can read anything. When it wants to *change* something, it proposes a plan: the current state is read, business rules are checked, the exact effects are previewed. A human (or a policy) approves that exact plan. Then `apply` re-checks that the world has not moved, executes with idempotency keys, **verifies every step against the real system**, rolls back in reverse if anything fails, and writes it all to a tamper-evident ledger.
+## § 01 · What it is
+
+Your agent can read anything. When it wants to *change* something, it files a plan: the current state is read, business rules are checked, the exact effects are previewed. A human (or a policy) signs that exact plan. Then `apply` re-checks that the world has not moved, executes with idempotency keys, **verifies every step against the real system**, rolls back in reverse if anything fails, and writes it all to a tamper-evident ledger.
 
 Zero dependencies. TypeScript. Speaks MCP out of the box, so it works with Claude, Cursor, VS Code, OpenAI Agents and anything else that talks Model Context Protocol.
 
-![countersigned demo: an agent proposes, is refused without approval, a human approves, apply is verified, a silent ERP failure is rolled back](docs/assets/demo.gif)
+<p align="center"><img src="docs/assets/flow.png" alt="Fig. 1: how a plan moves. Plan: observe state, check rules, preview effects, policy decides; nothing changes. Countersign: a human signs the plan's SHA-256, outside the agent's tools. Apply: re-observe, execute with idempotency keys, verify against the real system, compensate in reverse on failure. Every event goes to a hash-chained ledger." width="100%"></p>
 
-```
-agent ──plan──▶ observe state · check rules · preview effects · policy decides
-                      │
-         human approves the exact plan hash (CLI, UI, chat button)   ◀── the agent has no "approve" tool
-                      │
-agent ──apply─▶ recheck state (drift? refuse) ─▶ execute(idempotencyKey) ─▶ verify against the system
-                                                         │ failure
-                                                         ▼
-                                           compensate earlier steps, in reverse
-                      every event ─▶ hash-chained ledger
+## § 02 · See it
+
+<p align="center"><img src="docs/assets/demo.gif" alt="Terminal: the agent proposes, is refused without approval, a human approves, apply is verified, a silent ERP failure is rolled back." width="100%"><br><sub><b>The agent side.</b> Refused until approved, applied exactly once, and a write that silently did not stick is caught and rolled back.</sub></p>
+
+<p align="center"><img src="docs/assets/signing.gif" alt="A plan is signed by hand, stamped approved, then applied: every step is checked off with its verification evidence." width="420"><br><sub><b>The human side.</b> A real signature is hashed into the plan, then every step is verified. <a href="https://akiyo974.github.io/countersigned/">Try it in your browser.</a></sub></p>
+
+```bash
+git clone https://github.com/Akiyo974/countersigned && cd countersigned
+node examples/erp/demo.ts        # Node >= 22.18, nothing to install
 ```
 
-## Why
+The demos run an agent against a deliberately annoying fake ERP: documents locked by users, writes that report success but do not stick, emails that cannot be unsent. Every frame above comes from real runs (`scripts/render-demo.py`, `scripts/brand/render.mjs`).
+
+## § 03 · Incident register
 
 Agents moved from *answering* to *doing*. Writing to real systems (an ERP, a CRM, a billing API, a database) breaks in ways a better prompt cannot fix:
 
@@ -40,27 +57,15 @@ Agents moved from *answering* to *doing*. Writing to real systems (an ERP, a CRM
 
 Terraform solved this for infrastructure years ago. Nobody had generalized it to the rest of the systems agents now touch.
 
-## See it
+## § 04 · Lifecycle
 
-```bash
-git clone https://github.com/Akiyo974/countersigned && cd countersigned
-node examples/erp/demo.ts        # Node >= 22.18, no install needed
-```
+<p align="center"><img src="docs/assets/lifecycle.png" alt="Fig. 2: lifecycle of a plan. plan() leads to pending approval, approved or denied. Pending can be approved, rejected or expire. Approved becomes stale on drift, or applying when exactly one caller passes the recheck. Applying ends applied, compensated, or failed when a human must look." width="100%"></p>
 
-The GIF above is generated from real runs of `examples/erp/agent.ts` and the CLI (`python3 scripts/render-demo.py . docs/assets/demo.gif`). The longer narrated demo runs an agent against a deliberately annoying fake ERP: documents locked by users, writes that report success but do not stick, emails that cannot be unsent. Excerpt:
+More in [Concepts](docs/concepts.md): the plan hash, idempotency keys, ledger events and how to write good actions.
 
-```
-5. The ERP says "OK" but the write did not stick: verification catches it, earlier steps are rolled back
-    Plan pl_mw2gf0p3b5f8be729d: COMPENSATED
-    Step 1 (set_reorder_point) failed: verification failed: ERP shows 3, expected 6.
-    Every earlier effect was compensated; the system is back to its approved state.
-      0. reschedule_order: compensated
-      1. set_reorder_point: failed (verification failed: ERP shows 3, expected 6; compensated)
-```
+## § 05 · Define an action
 
-## Define an action
-
-An action is five small functions. Writing them forces the questions that matter *before* the agent runs in production.
+An action is six small clauses. Writing them forces the questions that matter *before* the agent runs in production.
 
 ```ts
 import { defineAction, t } from "countersigned";
@@ -97,7 +102,7 @@ export const setReorderPoint = defineAction({
 
 Already using zod, valibot or ajv? Wrap it with `t.custom(jsonSchema, parse)`.
 
-## Use it from code
+## § 06 · Use it from code
 
 ```ts
 import { FileStore, rules, Gate } from "countersigned";
@@ -114,7 +119,7 @@ await gate.approve(plan.id, { by: "christen" });  // or from the CLI, or your UI
 const report = await gate.apply(plan.id);        // safe to call again
 ```
 
-## Use it as an MCP server
+## § 07 · Use it as an MCP server
 
 ```ts
 import { serveStdio } from "countersigned/mcp";
@@ -140,7 +145,7 @@ npx countersigned approve pl_...       # signs this exact plan hash
 npx countersigned ledger verify        # chain and plan records intact?
 ```
 
-## Storage
+## § 08 · Storage
 
 ```ts
 import { FileStore, MemoryStore } from "countersigned";
@@ -153,7 +158,7 @@ new SqliteStore("countersigned.db"); // transactional, built on node:sqlite (sti
 
 Any database works: a `Store` is six async methods (`createPlan`, `getPlan`, `updatePlan`, `listPlans`, `appendLedger`, `readLedger`).
 
-## Policies
+## § 09 · Policies
 
 Rules are plain functions `(step, plan) => { decision, reason } | undefined`. Strictest opinion wins and `deny` can never be relaxed. With no rules: reads run, every write waits for a human.
 
@@ -165,9 +170,11 @@ Built in: `autoApprove`, `requireApproval`, `deny`, `irreversibleNeedsApproval`,
   : undefined
 ```
 
-## Guarantees, and what is not guaranteed
+## § 10 · Guarantees, and what is not
 
 Honest list, because safety tooling that oversells is worse than none.
+
+<p align="center"><img src="docs/assets/ledger-tamper.png" alt="The ledger after one entry was edited: that entry and every one after it no longer match, and the chain reports where it broke." width="100%"><br><sub>Edit one ledger entry and everything after it stops matching. Try it on <a href="https://akiyo974.github.io/countersigned/#ledger">the site</a>.</sub></p>
 
 - **Drift detection is as good as your `observe()`.** Observe exactly what the action depends on, from the source of truth.
 - **The gate's recheck is time-of-check.** A change between the recheck and the write is still possible unless the target system can refuse it. Keep the version (ETag, row version) in `observe()` and send it with the write (`If-Match`): the server then rejects any last-instant change, and `execute()` throws `NotAppliedError` so the gate rolls back cleanly. [`examples/rest`](examples/rest) shows the full pattern, tested.
@@ -177,11 +184,11 @@ Honest list, because safety tooling that oversells is worse than none.
 - **FileStore and SqliteStore are single-machine.** Both are safe across processes on one host. For several hosts, implement the `Store` interface on your database (six async methods).
 - **The ledger is tamper-evident, not tamper-proof.** Edits, insertions and deletions break the chain; entries cut from the end are caught because every plan records the last entry written for it (`countersigned ledger verify`). Someone able to rewrite both plans and ledger can still forge history, so publish `countersigned ledger head` somewhere the host cannot rewrite (a git commit, a log service) and verify with `--head`.
 
-## Status
+## § 11 · Status
 
-v0.1, working and tested (65 tests, including a real MCP client loop over stdio, a real HTTP API with ETags, multi-process SQLite, and regression tests for every finding of an adversarial security review). APIs may still move before 1.0.
+v0.2, working and tested (65 tests, including a real MCP client loop over stdio, a real HTTP API with ETags, multi-process SQLite, and regression tests for every finding of an adversarial security review). APIs may still move before 1.0.
 
-## Roadmap
+## § 12 · Roadmap
 
 - [ ] Python SDK with the same plan format, so one ledger serves both ecosystems
 - [x] SQLite store (`countersigned/sqlite`, built on `node:sqlite`)
@@ -193,10 +200,10 @@ v0.1, working and tested (65 tests, including a real MCP client loop over stdio,
 - [ ] OpenTelemetry export of ledger events
 - [ ] Ledger anchoring (periodic hash published to git or a transparency log)
 
-## Contributing
+## § 13 · Contributing
 
 Issues, adapters and ideas are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Found a way around a safety guarantee? Please report it privately, see [SECURITY.md](SECURITY.md).
 
-## License
+## § 14 · License
 
 [MIT](LICENSE)
