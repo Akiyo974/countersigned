@@ -8,6 +8,8 @@ Your agent can read anything. When it wants to *change* something, it proposes a
 
 Zero dependencies. TypeScript. Speaks MCP out of the box, so it works with Claude, Cursor, VS Code, OpenAI Agents and anything else that talks Model Context Protocol.
 
+![tollgate demo: an agent proposes, is refused without approval, a human approves, apply is verified, a silent ERP failure is rolled back](docs/assets/demo.gif)
+
 ```
 agent ──plan──▶ observe state · check rules · preview effects · policy decides
                       │
@@ -43,7 +45,7 @@ git clone https://github.com/Akiyo974/tollgate && cd tollgate
 node examples/erp/demo.ts        # Node >= 22.18, no install needed
 ```
 
-The demo runs an agent against a deliberately annoying fake ERP: documents locked by users, writes that report success but do not stick, emails that cannot be unsent. Excerpt:
+The GIF above is generated from real runs of `examples/erp/agent.ts` and the CLI (`python3 scripts/render-demo.py . docs/assets/demo.gif`). The longer narrated demo runs an agent against a deliberately annoying fake ERP: documents locked by users, writes that report success but do not stick, emails that cannot be unsent. Excerpt:
 
 ```
 5. The ERP says "OK" but the write did not stick: verification catches it, earlier steps are rolled back
