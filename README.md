@@ -6,7 +6,7 @@
   <a href="https://github.com/Akiyo974/countersigned/actions/workflows/ci.yml"><img alt="ci" src="https://img.shields.io/github/actions/workflow/status/Akiyo974/countersigned/ci.yml?branch=main&label=ci&style=flat-square&labelColor=141412&color=2e5e3a"></a>
   <a href="https://www.npmjs.com/package/countersigned"><img alt="npm" src="https://img.shields.io/npm/v/countersigned?style=flat-square&labelColor=141412&color=d2381b"></a>
   <img alt="dependencies: 0" src="https://img.shields.io/badge/dependencies-0-ece9e1?style=flat-square&labelColor=141412">
-  <img alt="node >= 22.18" src="https://img.shields.io/badge/node-%E2%89%A5%2022.18-ece9e1?style=flat-square&labelColor=141412">
+  <img alt="node 22.18 or later" src="https://img.shields.io/badge/node-22.18%2B-ece9e1?style=flat-square&labelColor=141412">
   <a href="LICENSE"><img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-ece9e1?style=flat-square&labelColor=141412"></a>
 </p>
 
@@ -30,12 +30,9 @@ Zero dependencies. TypeScript. Speaks MCP out of the box, so it works with Claud
 
 ## § 02 · See it
 
-<table>
-<tr>
-<td width="50%" valign="top"><img src="docs/assets/signing.gif" alt="A plan is signed by hand, stamped approved, then applied: every step is checked off with its verification evidence." width="100%"><br><sub><b>The human side.</b> A real signature is hashed into the plan, then every step is verified. <a href="https://akiyo974.github.io/countersigned/">Try it.</a></sub></td>
-<td width="50%" valign="top"><img src="docs/assets/demo.gif" alt="Terminal: the agent proposes, is refused without approval, a human approves, apply is verified, a silent ERP failure is rolled back." width="100%"><br><sub><b>The agent side.</b> Refused until approved, applied exactly once, and a write that silently did not stick is caught and rolled back.</sub></td>
-</tr>
-</table>
+<p align="center"><img src="docs/assets/demo.gif" alt="Terminal: the agent proposes, is refused without approval, a human approves, apply is verified, a silent ERP failure is rolled back." width="100%"><br><sub><b>The agent side.</b> Refused until approved, applied exactly once, and a write that silently did not stick is caught and rolled back.</sub></p>
+
+<p align="center"><img src="docs/assets/signing.gif" alt="A plan is signed by hand, stamped approved, then applied: every step is checked off with its verification evidence." width="420"><br><sub><b>The human side.</b> A real signature is hashed into the plan, then every step is verified. <a href="https://akiyo974.github.io/countersigned/">Try it in your browser.</a></sub></p>
 
 ```bash
 git clone https://github.com/Akiyo974/countersigned && cd countersigned
