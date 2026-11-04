@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>countersigned film stage</title>
+<link rel="stylesheet" href="brand.css">
+<style>
+  html, body { width: 1080px; height: 1350px; overflow: hidden; }
+  .stage { position: relative; width: 1080px; height: 1350px; background: var(--paper); overflow: hidden; }
+  .stage .strip { position: absolute; top: 0; left: 0; right: 0; background: var(--paper); z-index: 5; font-size: 15px; padding: 20px 40px; }
+  .margin-rule { left: 22px; z-index: 4; }
+  .scene { position: absolute; inset: 64px 0 0 0; padding: 70px 64px; opacity: 0; transform: translateY(40px); transition: opacity .6s cubic-bezier(.16,.84,.24,1), transform .8s cubic-bezier(.16,.84,.24,1); }
+  .scene.on { opacity: 1; transform: none; }
+  .scene.off { opacity: 0; transform: translateY(-40px); }
+  .kicker { color: var(--mute); font-size: 16px; margin-bottom: 30px; }
+  .big { font-size: 150px; }
+  .mid { font-size: 112px; }
+  .ln { display: block; overflow: hidden; }
+  .ln > span { display: inline-block; transform: translateY(105%); transition: transform .9s cubic-bezier(.16,.84,.24,1); }
+  .scene.on .ln > span { transform: none; }
+  .scene.on .ln:nth-child(2) > span { transition-delay: .25s; }
+  .scene.on .ln:nth-child(3) > span { transition-delay: .5s; }
+  .scene.on .ln:nth-child(4) > span { transition-delay: .75s; }
+  .lede { font-size: 34px; line-height: 1.4; color: var(--ink-2); margin-top: 46px; max-width: 900px; opacity: 0; transition: opacity .8s 1.1s; }
+  .scene.on .lede { opacity: 1; }
+
+  .inc { margin-top: 56px; border-top: 2px solid var(--ink); }
+  .inc div { display: grid; grid-template-columns: 150px 1fr; gap: 24px; padding: 30px 0; border-bottom: 1.5px solid var(--rule); font-size: 38px; line-height: 1.25; opacity: 0; transform: translateX(-24px); transition: all .6s cubic-bezier(.16,.84,.24,1); }
+  .inc div.in { opacity: 1; transform: none; }
+  .inc .no { color: var(--red-text); font-size: 18px; padding-top: 12px; }
+
+  .label { position: absolute; left: 64px; right: 64px; top: 48px; }
+  .label .display { font-size: 92px; }
+  .viewport { position: absolute; left: 0; right: 0; top: 290px; bottom: 0; overflow: hidden; border-top: 2px solid var(--ink); }
+  .viewport iframe { position: absolute; left: 0; top: 0; width: 794px; height: 790px; border: 0; transform: scale(1.36); transform-origin: 0 0; background: var(--paper); }
+
+  .end { text-align: left; }
+  .end .big { font-size: 168px; margin-top: 40px; }
+  .end .facts { margin-top: 40px; font-size: 22px; line-height: 2.1; }
+  .end .facts b { color: var(--red-text); font-weight: 500; }
+  .end .url { margin-top: 56px; font-family: var(--mono); font-size: 30px; padding: 26px 30px; background: var(--ink); color: var(--paper-3); box-shadow: 8px 8px 0 var(--red); display: inline-block; }
+  .end .url span { color: #ff7a5c; }
+  .end .url2 { margin-top: 26px; font-family: var(--mono); font-size: 24px; color: var(--ink-2); }
+  .bigstamp { position: absolute; right: 70px; bottom: 150px; width: 430px; transform: rotate(-9deg) scale(1.9); opacity: 0; transition: transform .5s cubic-bezier(.2,.9,.25,1), opacity .3s; }
+  .bigstamp.on { transform: rotate(-9deg) scale(1); opacity: .92; }
+</style>
+</head>
+<body>
+<div class="stage grain">
+  <div class="strip mono"><span><span class="seal"></span>countersigned</span><span class="muted">Form CS-01 · open source</span><span>MIT · MCP</span></div>
+  <div class="margin-rule"></div>
+
+  <section class="scene" id="s-title">
+    <p class="mono kicker">§ 00 · for AI agents that change real systems</p>
+    <h1 class="display big"><span class="ln"><span>Your agent</span></span><span class="ln"><span>proposes.</span></span><span class="ln"><span>A human</span></span><span class="ln"><span><em>countersigns.</em></span></span></h1>
+    <p class="lede">Then it runs, every step verified against the real system.</p>
+  </section>
+
+  <section class="scene" id="s-why">
+    <p class="mono kicker">§ 01 · incident register</p>
+    <h2 class="display mid"><span class="ln"><span>Prompts don't</span></span><span class="ln"><span>fix these.</span></span></h2>
+    <div class="inc">
+      <div><span class="mono no">INC-01</span><span>The world changed after you said yes.</span></div>
+      <div><span class="mono no">INC-02</span><span>The retry sent the email twice.</span></div>
+      <div><span class="mono no">INC-03</span><span>“Done,” it said. The write never stuck.</span></div>
+      <div><span class="mono no">INC-04</span><span>Half a plan ran. Nobody undid it.</span></div>
+    </div>
+  </section>
+
+  <section class="scene" id="s-live">
+    <div class="label"><p class="mono kicker" data-k>§ 02 · a human countersigns</p><h2 class="display" data-h>Sign. Then verify.</h2></div>
+    <div class="viewport"><iframe id="site" src="../../site/" title="countersigned site"></iframe></div>
+  </section>
+
+  <section class="scene end" id="s-end">
+    <p class="mono kicker">§ 05 · filing instructions</p>
+    <h2 class="display big">counter&shy;signed</h2>
+    <div class="facts mono">Plan / approve / apply for agent actions<br><b>Drift checks</b> · idempotency keys · <b>verified completion</b><br>saga rollback · <b>tamper-evident ledger</b><br>TypeScript · zero dependencies · MCP native · MIT</div>
+    <div class="url">github.com/<span>Akiyo974</span>/countersigned</div>
+    <div class="url2">Sign a plan yourself → akiyo974.github.io/countersigned</div>
+    <svg class="bigstamp stamp" viewBox="0 0 260 120"><defs><filter id="ink"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="d"/><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="3" result="blot"/><feColorMatrix in="blot" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.55" result="mask"/><feComposite in="d" in2="mask" operator="in"/></filter></defs><g filter="url(#ink)"><rect x="6" y="6" width="248" height="108" rx="6" fill="none" stroke="currentColor" stroke-width="5"/><rect x="14" y="14" width="232" height="92" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="130" y="64" text-anchor="middle" class="stamp-word" textLength="196" lengthAdjust="spacingAndGlyphs">OPEN SOURCE</text><text x="130" y="92" text-anchor="middle" class="stamp-small" textLength="196" lengthAdjust="spacingAndGlyphs">MIT · ZERO DEPENDENCIES</text></g></svg>
+  </section>
+</div>
+
+<script>
+  // The film is a timeline. The recorder calls window.play() and waits for window.done.
+  const $ = (s) => document.querySelector(s);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const show = (id) => {
+    for (const s of document.querySelectorAll(".scene.on")) { s.classList.remove("on"); s.classList.add("off"); }
+    const el = $(id); el.classList.remove("off"); void el.offsetWidth; el.classList.add("on");
+  };
+  const site = () => $("#site").contentWindow;
+  const sdoc = () => $("#site").contentDocument;
+  const label = (k, h) => { $("[data-k]").textContent = k; $("[data-h]").textContent = h; };
+  function scrollSiteTo(sel, offset = 0) {
+    const el = sdoc().querySelector(sel);
+    site().scrollTo({ top: el.getBoundingClientRect().top + site().scrollY - offset, behavior: "smooth" });
+  }
+
+  window.done = false;
+  window.play = async () => {
+    sdoc().head.insertAdjacentHTML("beforeend", "<style>.grain{display:none}.strip{display:none}html{scroll-behavior:smooth}</style>");
+    // force headings visible inside the iframe regardless of scroll observers
+    for (const h of sdoc().querySelectorAll("[data-print],[data-reveal]")) h.classList.add("in");
+
+    show("#s-title"); await sleep(4400);
+
+    show("#s-why");
+    await sleep(900);
+    for (const d of document.querySelectorAll(".inc div")) { d.classList.add("in"); await sleep(650); }
+    await sleep(1500);
+
+    scrollSiteTo(".plan", 20);
+    await sleep(300);
+    show("#s-live");
+    await sleep(1200);
+    sdoc().querySelector("[data-sign-for-me]").click();
+    await sleep(3600);
+    scrollSiteTo(".sign", 300);
+    await sleep(900);
+    sdoc().querySelector("[data-apply]").click();
+    await sleep(800);
+    scrollSiteTo(".steps", 40);
+    await sleep(3200);
+
+    label("§ 03 · tamper-evident ledger", "Edit one line. Watch.");
+    scrollSiteTo("#ledger .book", 30);
+    await sleep(1800);
+    const cell = sdoc().querySelector("[data-entries] li:nth-child(2) .data");
+    for (const ch of " (edited)") { cell.textContent += ch; cell.dispatchEvent(new Event("input", { bubbles: true })); await sleep(90); }
+    await sleep(3000);
+
+    label("§ 04 · time of check, time of use", "Approved at 3. Found 5.");
+    scrollSiteTo("#drift .drift", 30);
+    await sleep(1600);
+    const f = sdoc().querySelector("[data-erp]");
+    f.focus(); f.value = "5"; f.dispatchEvent(new Event("input", { bubbles: true }));
+    await sleep(900);
+    sdoc().querySelector("[data-drift-apply]").click();
+    await sleep(3000);
+
+    show("#s-end");
+    await sleep(1400);
+    $(".bigstamp").classList.add("on");
+    await sleep(3600);
+    window.done = true;
+  };
+</script>
+</body>
+</html>
