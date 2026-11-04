@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://akiyo974.github.io/countersigned/"><img src="docs/assets/banner.png" alt="countersigned. Your agent proposes. A human countersigns. Terraform-style plan / approve / apply for AI agent actions." width="100%"></a>
+  <a href="https://akiyo974.github.io/countersigned/"><img src="https://raw.githubusercontent.com/Akiyo974/countersigned/main/docs/assets/banner.png" alt="countersigned. Your agent proposes. A human countersigns. Terraform-style plan / approve / apply for AI agent actions." width="100%"></a>
 </p>
 
 <p align="center">
@@ -7,15 +7,15 @@
   <a href="https://www.npmjs.com/package/countersigned"><img alt="npm" src="https://img.shields.io/npm/v/countersigned?style=flat-square&labelColor=141412&color=d2381b"></a>
   <img alt="dependencies: 0" src="https://img.shields.io/badge/dependencies-0-ece9e1?style=flat-square&labelColor=141412">
   <img alt="node 22.18 or later" src="https://img.shields.io/badge/node-22.18%2B-ece9e1?style=flat-square&labelColor=141412">
-  <a href="LICENSE"><img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-ece9e1?style=flat-square&labelColor=141412"></a>
+  <a href="https://github.com/Akiyo974/countersigned/blob/main/LICENSE"><img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-ece9e1?style=flat-square&labelColor=141412"></a>
 </p>
 
 <p align="center">
   <b><a href="https://akiyo974.github.io/countersigned/">Sign a plan in your browser</a></b> &nbsp;·&nbsp;
-  <a href="docs/concepts.md">Concepts</a> &nbsp;·&nbsp;
+  <a href="https://github.com/Akiyo974/countersigned/blob/main/docs/concepts.md">Concepts</a> &nbsp;·&nbsp;
   <a href="#-05--define-an-action">Define an action</a> &nbsp;·&nbsp;
   <a href="#-07--use-it-as-an-mcp-server">MCP</a> &nbsp;·&nbsp;
-  <a href="CHANGELOG.md">Changelog</a>
+  <a href="https://github.com/Akiyo974/countersigned/blob/main/CHANGELOG.md">Changelog</a>
 </p>
 
 ---
@@ -26,13 +26,13 @@ Your agent can read anything. When it wants to *change* something, it files a pl
 
 Zero dependencies. TypeScript. Speaks MCP out of the box, so it works with Claude, Cursor, VS Code, OpenAI Agents and anything else that talks Model Context Protocol.
 
-<p align="center"><img src="docs/assets/flow.png" alt="Fig. 1: how a plan moves. Plan: observe state, check rules, preview effects, policy decides; nothing changes. Countersign: a human signs the plan's SHA-256, outside the agent's tools. Apply: re-observe, execute with idempotency keys, verify against the real system, compensate in reverse on failure. Every event goes to a hash-chained ledger." width="100%"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/Akiyo974/countersigned/main/docs/assets/flow.png" alt="Fig. 1: how a plan moves. Plan: observe state, check rules, preview effects, policy decides; nothing changes. Countersign: a human signs the plan's SHA-256, outside the agent's tools. Apply: re-observe, execute with idempotency keys, verify against the real system, compensate in reverse on failure. Every event goes to a hash-chained ledger." width="100%"></p>
 
 ## § 02 · See it
 
-<p align="center"><img src="docs/assets/demo.gif" alt="Terminal: the agent proposes, is refused without approval, a human approves, apply is verified, a silent ERP failure is rolled back." width="100%"><br><sub><b>The agent side.</b> Refused until approved, applied exactly once, and a write that silently did not stick is caught and rolled back.</sub></p>
+<p align="center"><img src="https://raw.githubusercontent.com/Akiyo974/countersigned/main/docs/assets/demo.gif" alt="Terminal: the agent proposes, is refused without approval, a human approves, apply is verified, a silent ERP failure is rolled back." width="100%"><br><sub><b>The agent side.</b> Refused until approved, applied exactly once, and a write that silently did not stick is caught and rolled back.</sub></p>
 
-<p align="center"><img src="docs/assets/signing.gif" alt="A plan is signed by hand, stamped approved, then applied: every step is checked off with its verification evidence." width="420"><br><sub><b>The human side.</b> A real signature is hashed into the plan, then every step is verified. <a href="https://akiyo974.github.io/countersigned/">Try it in your browser.</a></sub></p>
+<p align="center"><img src="https://raw.githubusercontent.com/Akiyo974/countersigned/main/docs/assets/signing.gif" alt="A plan is signed by hand, stamped approved, then applied: every step is checked off with its verification evidence." width="420"><br><sub><b>The human side.</b> A real signature is hashed into the plan, then every step is verified. <a href="https://akiyo974.github.io/countersigned/">Try it in your browser.</a></sub></p>
 
 ```bash
 git clone https://github.com/Akiyo974/countersigned && cd countersigned
@@ -59,9 +59,9 @@ Terraform solved this for infrastructure years ago. Nobody had generalized it to
 
 ## § 04 · Lifecycle
 
-<p align="center"><img src="docs/assets/lifecycle.png" alt="Fig. 2: lifecycle of a plan. plan() leads to pending approval, approved or denied. Pending can be approved, rejected or expire. Approved becomes stale on drift, or applying when exactly one caller passes the recheck. Applying ends applied, compensated, or failed when a human must look." width="100%"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/Akiyo974/countersigned/main/docs/assets/lifecycle.png" alt="Fig. 2: lifecycle of a plan. plan() leads to pending approval, approved or denied. Pending can be approved, rejected or expire. Approved becomes stale on drift, or applying when exactly one caller passes the recheck. Applying ends applied, compensated, or failed when a human must look." width="100%"></p>
 
-More in [Concepts](docs/concepts.md): the plan hash, idempotency keys, ledger events and how to write good actions.
+More in [Concepts](https://github.com/Akiyo974/countersigned/blob/main/docs/concepts.md): the plan hash, idempotency keys, ledger events and how to write good actions.
 
 ## § 05 · Define an action
 
@@ -140,7 +140,7 @@ Then, in another terminal, the human side:
 
 ```bash
 npx countersigned list                 # what is waiting
-npx countersigned show pl_...          # intent, before/after, why it needs you
+npx countersigned show pl_...          # intent, exact input, before/after, why it needs you
 npx countersigned approve pl_...       # signs this exact plan hash
 npx countersigned ledger verify        # chain and plan records intact?
 ```
@@ -174,10 +174,10 @@ Built in: `autoApprove`, `requireApproval`, `deny`, `irreversibleNeedsApproval`,
 
 Honest list, because safety tooling that oversells is worse than none.
 
-<p align="center"><img src="docs/assets/ledger-tamper.png" alt="The ledger after one entry was edited: that entry and every one after it no longer match, and the chain reports where it broke." width="100%"><br><sub>Edit one ledger entry and everything after it stops matching. Try it on <a href="https://akiyo974.github.io/countersigned/#ledger">the site</a>.</sub></p>
+<p align="center"><img src="https://raw.githubusercontent.com/Akiyo974/countersigned/main/docs/assets/ledger-tamper.png" alt="The ledger after one entry was edited: that entry and every one after it no longer match, and the chain reports where it broke." width="100%"><br><sub>Edit one ledger entry and everything after it stops matching. Try it on <a href="https://akiyo974.github.io/countersigned/#ledger">the site</a>.</sub></p>
 
 - **Drift detection is as good as your `observe()`.** Observe exactly what the action depends on, from the source of truth.
-- **The gate's recheck is time-of-check.** A change between the recheck and the write is still possible unless the target system can refuse it. Keep the version (ETag, row version) in `observe()` and send it with the write (`If-Match`): the server then rejects any last-instant change, and `execute()` throws `NotAppliedError` so the gate rolls back cleanly. [`examples/rest`](examples/rest) shows the full pattern, tested.
+- **The gate's recheck is time-of-check.** A change between the recheck and the write is still possible unless the target system can refuse it. Keep the version (ETag, row version) in `observe()` and send it with the write (`If-Match`): the server then rejects any last-instant change, and `execute()` throws `NotAppliedError` so the gate rolls back cleanly. [`examples/rest`](https://github.com/Akiyo974/countersigned/tree/main/examples/rest) shows the full pattern, tested.
 - **Compensation is not a transaction.** It is a best effort correction. That is why reversibility is declared per action, and irreversible effects that already happened are reported as `unrecoverable` instead of hidden.
 - **If `execute()` throws, the outcome is unknown.** countersigned does not guess: the step is reported for a human, the key lets you look it up. When you *know* nothing happened (a 409, 412 or 422 from the API), throw `NotAppliedError` instead.
 - **An interrupted apply is never resumed implicitly.** If the process dies mid-apply, every further `apply` is refused (`APPLY_IN_PROGRESS`), so an agent cannot crash its way into a re-run. An operator calls `gate.resume(id, { by })` (not exposed over MCP): ownership is taken atomically (a second resume, or the original process if still alive, stops before its next step), finished steps are skipped, a step that started without a recorded outcome is checked with `verify()` against the real system and is never blindly re-executed, and steps that never started are re-checked for drift and expiry (overridable with `ignoreDrift` / `allowExpired` when the operator has looked).
@@ -186,7 +186,7 @@ Honest list, because safety tooling that oversells is worse than none.
 
 ## § 11 · Status
 
-v0.2, working and tested (65 tests, including a real MCP client loop over stdio, a real HTTP API with ETags, multi-process SQLite, and regression tests for every finding of an adversarial security review). APIs may still move before 1.0.
+v0.2, working and tested (71 tests, including a real MCP client loop over stdio, a real HTTP API with ETags, multi-process SQLite, and regression tests for every finding of an adversarial security review). APIs may still move before 1.0.
 
 ## § 12 · Roadmap
 
@@ -202,8 +202,8 @@ v0.2, working and tested (65 tests, including a real MCP client loop over stdio,
 
 ## § 13 · Contributing
 
-Issues, adapters and ideas are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Found a way around a safety guarantee? Please report it privately, see [SECURITY.md](SECURITY.md).
+Issues, adapters and ideas are welcome: see [CONTRIBUTING.md](https://github.com/Akiyo974/countersigned/blob/main/CONTRIBUTING.md) and the [Code of Conduct](https://github.com/Akiyo974/countersigned/blob/main/CODE_OF_CONDUCT.md). Found a way around a safety guarantee? Please report it privately, see [SECURITY.md](https://github.com/Akiyo974/countersigned/blob/main/SECURITY.md).
 
 ## § 14 · License
 
-[MIT](LICENSE)
+[MIT](https://github.com/Akiyo974/countersigned/blob/main/LICENSE)

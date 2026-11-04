@@ -6,3 +6,11 @@ dist/
 
 # generated at deploy by site/tools/fetch-fonts.mjs
 site/fonts/
+
+# local stores and secrets
+countersigned.db
+countersigned.db-*
+*.db-wal
+*.db-shm
+.env
+.env.*

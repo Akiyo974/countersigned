@@ -113,8 +113,8 @@ export class Gate {
     if (intent.length > 1000) throw new GateError("INVALID_INPUT", "`intent` is limited to 1000 characters.");
     // Control characters could rewrite what the human sees in a terminal. Refuse them outright.
     // eslint-disable-next-line no-control-regex
-    if (/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/.test(intent)) {
-      throw new GateError("INVALID_INPUT", "`intent` must be a single line of plain text (no control or direction-override characters).");
+    if (/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(intent)) {
+      throw new GateError("INVALID_INPUT", "`intent` must be a single line of plain text (no control, invisible or direction-override characters).");
     }
 
     // Validate everything first and report every problem at once: one round-trip for the model.
@@ -441,7 +441,7 @@ export class Gate {
         }
         outcome.status = "failed";
         outcome.error = `in doubt after interruption: verify() could not confirm the effect (${verdict.reason ?? "no reason"}); not re-executed`;
-        await this.store.appendLedger({ type: "step.failed", planId: plan.id, step: step.index, key, data: { error: outcome.error, inDoubt: true } });
+        await this.head(plan.id, await this.store.appendLedger({ type: "step.failed", planId: plan.id, step: step.index, key, data: { error: outcome.error, inDoubt: true } }));
         failure = { index: step.index, error: outcome.error, executed: false };
         break;
       }
@@ -451,6 +451,12 @@ export class Gate {
       }
       // Write-ahead: the intent is on record (and anchored on the plan) before the side effect can happen.
       await this.head(plan.id, await this.store.appendLedger({ type: "step.intent", planId: plan.id, step: step.index, key, data: { action: step.action, input } }));
+      // Check ownership again AFTER the intent is durable. A resume() that took over in between either
+      // read the ledger before this intent (then it runs the step itself, and we stop here) or after it
+      // (then it treats the step as in doubt and never re-executes it). Either way the step runs once.
+      if (!(await this.stillOwner(plan.id, owner))) {
+        throw new GateError("APPLY_IN_PROGRESS", `Plan ${plan.id} was taken over by resume(); this caller stopped before executing step ${step.index}.`);
+      }
 
       let result: unknown;
       try {
@@ -459,7 +465,7 @@ export class Gate {
         const notApplied = e instanceof NotAppliedError;
         outcome.status = "failed";
         outcome.error = notApplied ? `not applied: ${errMsg(e)}` : errMsg(e);
-        await this.store.appendLedger({ type: "step.failed", planId: plan.id, step: step.index, key, data: { error: outcome.error, notApplied } });
+        await this.head(plan.id, await this.store.appendLedger({ type: "step.failed", planId: plan.id, step: step.index, key, data: { error: outcome.error, notApplied } }));
         failure = { index: step.index, error: outcome.error, executed: false, notApplied };
         break;
       }
@@ -476,13 +482,13 @@ export class Gate {
         outcome.result = result;
         outcome.evidence = verdict.evidence;
         outcome.error = `verification failed: ${verdict.reason ?? "postcondition not met"}`;
-        await this.store.appendLedger({
+        await this.head(plan.id, await this.store.appendLedger({
           type: "step.verify_failed",
           planId: plan.id,
           step: step.index,
           key,
           data: { result, reason: verdict.reason, evidence: verdict.evidence },
-        });
+        }));
         failure = { index: step.index, error: outcome.error, result, executed: true };
         break;
       }
@@ -528,12 +534,12 @@ export class Gate {
           });
           if (u.index !== failure.index) outcome.status = "compensated";
           else outcome.error = `${outcome.error}; compensated`;
-          await this.store.appendLedger({ type: "step.compensated", planId: plan.id, step: u.index, key });
+          await this.head(plan.id, await this.store.appendLedger({ type: "step.compensated", planId: plan.id, step: u.index, key }));
         } catch (e) {
           outcome.status = "compensation_failed";
           outcome.error = `compensation failed: ${errMsg(e)}`;
           unrecoverable.push({ index: u.index, action: step.action, reason: outcome.error });
-          await this.store.appendLedger({ type: "step.compensation_failed", planId: plan.id, step: u.index, key, data: { error: errMsg(e) } });
+          await this.head(plan.id, await this.store.appendLedger({ type: "step.compensation_failed", planId: plan.id, step: u.index, key, data: { error: errMsg(e) } }));
         }
       }
 

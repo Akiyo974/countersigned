@@ -1,4 +1,4 @@
-// countersigned.dev site. No framework, no tracking, nothing leaves your browser.
+// countersigned website. No framework, no tracking, nothing leaves your browser.
 // Every hash on this page is a real SHA-256 computed locally with WebCrypto.
 
 const $ = (s, r = document) => r.querySelector(s);

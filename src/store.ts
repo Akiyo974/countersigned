@@ -22,6 +22,16 @@ export interface Store {
 
 const clone = <T>(v: T): T => structuredClone(v);
 
+/** Thrown when the ledger itself cannot be read, as opposed to a broken hash chain. */
+export class LedgerCorruptError extends Error {
+  readonly line: number;
+  constructor(message: string, line: number) {
+    super(message);
+    this.name = "LedgerCorruptError";
+    this.line = line;
+  }
+}
+
 export class MemoryStore implements Store {
   private plans = new Map<string, Plan>();
   private ledger: LedgerEntry[] = [];
@@ -175,7 +185,11 @@ export class FileStore implements Store {
     const text = readFileSync(this.ledgerPath, "utf8").trimEnd();
     if (!text) return undefined;
     const lastLine = text.slice(text.lastIndexOf("\n") + 1);
-    return JSON.parse(lastLine) as LedgerEntry;
+    try {
+      return JSON.parse(lastLine) as LedgerEntry;
+    } catch {
+      throw new LedgerCorruptError(`${this.ledgerPath}: last line is not valid JSON; the ledger is damaged, refusing to append`, -1);
+    }
   }
 
   async appendLedger(entry: LedgerInput): Promise<LedgerEntry> {
@@ -189,10 +203,18 @@ export class FileStore implements Store {
 
   async readLedger(filter?: { planId?: string }): Promise<LedgerEntry[]> {
     if (!existsSync(this.ledgerPath)) return [];
-    return readFileSync(this.ledgerPath, "utf8")
-      .split("\n")
-      .filter(Boolean)
-      .map((l) => JSON.parse(l) as LedgerEntry)
-      .filter((e) => !filter?.planId || e.planId === filter.planId);
+    const lines = readFileSync(this.ledgerPath, "utf8").split("\n");
+    const out: LedgerEntry[] = [];
+    lines.forEach((l, i) => {
+      if (!l) return;
+      let e: LedgerEntry;
+      try {
+        e = JSON.parse(l) as LedgerEntry;
+      } catch {
+        throw new LedgerCorruptError(`${this.ledgerPath}: line ${i + 1} is not valid JSON`, i + 1);
+      }
+      if (!filter?.planId || e.planId === filter.planId) out.push(e);
+    });
+    return out;
   }
 }

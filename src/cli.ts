@@ -3,7 +3,7 @@ import { userInfo } from "node:os";
 import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
 import { GateError } from "./errors.ts";
-import { short } from "./hash.ts";
+import { canonicalJson, short } from "./hash.ts";
 import { verifyStore } from "./ledger.ts";
 import { safe } from "./sanitize.ts";
 import { approvePlan, rejectPlan } from "./plan.ts";
@@ -36,7 +36,7 @@ const HELP = `${bold("countersigned")}: the human side of the gate.
 
 ${bold("Usage")}
   countersigned list [--all]                     plans waiting for you (or every plan)
-  countersigned show <planId>                    full plan: intent, state, effects, decision
+  countersigned show <planId> [--full]           full plan: intent, exact input, effects, decision
   countersigned approve <planId> [--by NAME] [--note TEXT] [--yes]
   countersigned reject <planId> --reason TEXT [--by NAME]
   countersigned ledger [--plan <planId>] [--limit N]
@@ -57,6 +57,8 @@ function ago(iso: string): string {
   return `${Math.round(s / 3600)}h ago`;
 }
 
+let full = false;
+
 function printPlan(p: Plan): void {
   const color = statusColor[p.status];
   console.log(`${bold(`Plan ${p.id}`)}  ${color(p.status.toUpperCase())}  ${dim(`hash ${short(p.hash)}`)}`);
@@ -69,6 +71,11 @@ function printPlan(p: Plan): void {
   for (const s of p.steps) {
     const rev = s.reversibility === "irreversible" ? red(bold("IRREVERSIBLE")) : s.reversibility === "read" ? dim("read") : s.reversibility;
     console.log(`  ${bold(`${s.index}.`)} ${bold(s.action)}  [${rev}]  ${dim(s.decision)}`);
+    // The exact input is part of what is signed, so it is always shown, not only the action's own summary.
+    const raw = canonicalJson(s.input);
+    const LIMIT = 800;
+    const cut = !full && raw.length > LIMIT;
+    console.log(`     ${dim("input")} ${safe(cut ? raw.slice(0, LIMIT) : raw)}${cut ? yellow(` \u2026 (+${raw.length - LIMIT} chars, use --full)`) : ""}`);
     for (const e of s.effects) {
       const sym = e.op === "send" ? red(">") : e.op === "delete" ? red("-") : e.op === "create" ? green("+") : e.op === "read" ? dim("·") : yellow("~");
       console.log(`     ${sym} ${safe(e.summary ?? `${e.op} ${e.target}`)}`);
@@ -112,10 +119,12 @@ async function main(argv: string[]): Promise<number> {
       limit: { type: "string" },
       all: { type: "boolean" },
       yes: { type: "boolean", short: "y" },
+      full: { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
   });
   const [cmd, arg] = positionals;
+  full = !!values.full;
   if (values.help || !cmd) {
     console.log(HELP);
     return cmd ? 0 : 1;
@@ -149,6 +158,7 @@ async function main(argv: string[]): Promise<number> {
       if (!arg) throw new Error("usage: countersigned approve <planId>");
       const p = await store.getPlan(arg);
       if (!p) throw new GateError("PLAN_NOT_FOUND", `No plan ${arg} in ${store.dir}`);
+      full = true; // never approve something only partly shown
       printPlan(p);
       console.log();
       if (!values.yes) {
@@ -158,7 +168,8 @@ async function main(argv: string[]): Promise<number> {
           return 1;
         }
       }
-      const approved = await approvePlan(store, arg, { by, note: values.note });
+      // Pin the decision to the exact version that was just printed.
+      const approved = await approvePlan(store, arg, { by, note: values.note, expectedHash: p.hash });
       console.log(green(`Approved ${approved.id} (hash ${short(approved.hash)}). The agent can now apply it.`));
       return 0;
     }

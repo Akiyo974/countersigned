@@ -116,7 +116,7 @@ export function erpActions(erp: FakeErp): AnyAction[] {
       body: t.string({ min: 10, max: 4000 }),
     }),
     observe: () => null,
-    preview: ({ to, subject }) => [{ target: `email:${to}`, op: "send", after: { subject }, summary: `send "${subject}" to ${to}` }],
+    preview: ({ to, subject, body }) => [{ target: `email:${to}`, op: "send", after: { subject, body }, summary: `send "${subject}" to ${to}` }],
     // The idempotency key becomes the ERP's external reference: a retry cannot send twice.
     execute: (input, { idempotencyKey }) => erp.sendEmail({ ...input, ref: idempotencyKey }),
     verify: (_i, _sent, { idempotencyKey }) => {

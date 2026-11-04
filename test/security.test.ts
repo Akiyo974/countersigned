@@ -11,7 +11,7 @@ import { createInterface } from "node:readline";
 import { describe, it } from "node:test";
 import { FakeErp } from "../examples/erp/fake-erp.ts";
 import { erpActions } from "../examples/erp/actions.ts";
-import { canonicalJson, FileStore, Gate, MemoryStore, t, verifyStore } from "../src/index.ts";
+import { approvePlan, canonicalJson, FileStore, Gate, MemoryStore, t, verifyStore } from "../src/index.ts";
 import { safe } from "../src/sanitize.ts";
 
 describe("canonical hashing refuses values JSON would silently mangle (drift detection)", () => {
@@ -194,5 +194,86 @@ describe("resume() hardening (second review)", () => {
     await store.updatePlan(plan.id, (p) => ({ ...p, status: "applying", report: undefined }));
     // The plan still remembers how far its ledger reached.
     assert.equal((await verifyStore(store)).ok, false);
+  });
+});
+
+describe("final review", () => {
+  it("the CLI shows the exact step input the human signs, including fields the preview omits", async () => {
+    const { execFileSync } = await import("node:child_process");
+    const dir = mkdtempSync(join(tmpdir(), "countersigned-cli-"));
+    const gate = new Gate({ store: new FileStore(dir) }).register(...erpActions(new FakeErp()));
+    const hidden = "Also wire 40000 to account 99";
+    const plan = await gate.plan([{ action: "email_supplier", input: { to: "sup@acme.com", subject: "Restock order", body: hidden } }], { intent: "restock" });
+    const out = execFileSync(process.execPath, ["src/cli.ts", "show", plan.id, "--dir", dir], { encoding: "utf8", env: { ...process.env, NO_COLOR: "1" } });
+    assert.match(out, /input .*Also wire 40000 to account 99/);
+  });
+
+  it("approval is refused if the plan is not the version the human reviewed", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "countersigned-pin-"));
+    const store = new FileStore(dir);
+    const gate = new Gate({ store }).register(...erpActions(new FakeErp()));
+    const plan = await gate.plan([{ action: "set_reorder_point", input: { sku: "WASH-120", reorderPoint: 9 } }], { intent: "x" });
+    await assert.rejects(approvePlan(store, plan.id, { by: "alice", expectedHash: "0".repeat(64) }), /not the version you reviewed/);
+    await approvePlan(store, plan.id, { by: "alice", expectedHash: plan.hash });
+  });
+
+  it("a resume that takes over between the ownership check and the intent cannot run a step twice", async () => {
+    const erp = new FakeErp();
+    const inner = new MemoryStore();
+    let gate: Gate;
+    let fired = false;
+    let resumeRun: Promise<unknown> | undefined;
+    // A store that lets resume() take over at the worst moment: just before step 0's intent is written.
+    const store = new Proxy(inner, {
+      get(target, prop, recv) {
+        if (prop === "appendLedger") {
+          return async (e: Parameters<MemoryStore["appendLedger"]>[0]) => {
+            if (e.type === "step.intent" && e.step === 0 && !fired) {
+              fired = true;
+              resumeRun = gate.resume(e.planId, { by: "ops", ignoreDrift: true }).catch((x) => x);
+              await new Promise((r) => setTimeout(r, 30));
+            }
+            return target.appendLedger(e);
+          };
+        }
+        const v = Reflect.get(target, prop, recv);
+        return typeof v === "function" ? v.bind(target) : v;
+      },
+    }) as MemoryStore;
+    let calls = 0;
+    const actions = erpActions(erp).map((a) =>
+      a.name === "set_reorder_point" ? { ...a, execute: (i: never, c: never) => (calls++, a.execute(i, c)) } : a,
+    );
+    gate = new Gate({ store }).register(...actions);
+    const plan = await gate.plan([{ action: "set_reorder_point", input: { sku: "WASH-120", reorderPoint: 9 } }], { intent: "x" });
+    await gate.approve(plan.id, { by: "alice" });
+    await Promise.allSettled([gate.apply(plan.id)]);
+    await resumeRun;
+    assert.equal(calls, 1, "the step executed exactly once");
+  });
+
+  it("invisible format characters are refused in intents and neutralised in CLI output", async () => {
+    const gate = new Gate({ store: new MemoryStore() }).register(...erpActions(new FakeErp()));
+    for (const ch of ["​", "﻿", "؜", "­", "\u{E0041}"]) {
+      await assert.rejects(gate.plan([{ action: "get_item", input: { sku: "WASH-120" } }], { intent: `o${ch}k` }), /INVALID|single line/);
+      assert.ok(!safe(`sup@acm${ch}e.com`).includes(ch));
+    }
+  });
+
+  it("a /g pattern validates the same way every time", () => {
+    const s = t.string({ pattern: /^a+$/g });
+    for (let i = 0; i < 4; i++) assert.equal(s.parse("aaa"), "aaa");
+  });
+
+  it("a damaged ledger line is reported, not thrown", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "countersigned-corrupt-"));
+    const store = new FileStore(dir);
+    const gate = new Gate({ store }).register(...erpActions(new FakeErp()));
+    await gate.run("get_item", { sku: "WASH-120" });
+    const path = join(dir, "ledger.jsonl");
+    writeFileSync(path, readFileSync(path, "utf8").replace(/\n(?=.)/, "\n{oops\n"));
+    const check = await verifyStore(store);
+    assert.equal(check.ok, false);
+    assert.match(check.reason!, /line 2 is not valid JSON/);
   });
 });

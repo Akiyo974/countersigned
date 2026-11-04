@@ -46,6 +46,8 @@ export interface DecideOptions {
   by: string;
   note?: string;
   now?: Date;
+  /** The plan hash the human was shown. If the stored plan differs, the decision is refused. */
+  expectedHash?: string;
 }
 
 async function loadPending(store: Store, id: string, now: Date): Promise<Plan> {
@@ -73,11 +75,15 @@ export async function approvePlan(store: Store, id: string, opts: DecideOptions)
   const by = opts.by?.trim();
   if (!by) throw new GateError("NOT_APPROVED", "An approval must name who approves.");
   const plan = await loadPending(store, id, now);
+  if (opts.expectedHash && opts.expectedHash !== plan.hash) {
+    throw new GateError("TAMPERED", `Plan ${id} is not the version you reviewed (hash changed). Review it again.`);
+  }
   if (by === plan.requestedBy) {
     throw new GateError("SELF_APPROVAL", `"${by}" requested this plan and cannot approve it.`);
   }
   const updated = await store.updatePlan(id, (p) => {
     if (p.status !== "pending_approval") throw new GateError("ALREADY_DECIDED", `Plan ${id} was decided concurrently.`);
+    if (p.hash !== plan.hash) throw new GateError("TAMPERED", `Plan ${id} changed while it was being approved.`);
     return {
       ...p,
       status: "approved",
