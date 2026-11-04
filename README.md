@@ -4,7 +4,7 @@
 
 **Your agent proposes. A human countersigns. Then it runs, verified.**
 
-Terraform-style `plan` / `apply` for AI agent actions.
+Terraform-style `plan` / `apply` for AI agent actions. **[Try it in your browser: sign a plan yourself →](https://akiyo974.github.io/countersigned/)**
 
 Your agent can read anything. When it wants to *change* something, it proposes a plan: the current state is read, business rules are checked, the exact effects are previewed. A human (or a policy) approves that exact plan. Then `apply` re-checks that the world has not moved, executes with idempotency keys, **verifies every step against the real system**, rolls back in reverse if anything fails, and writes it all to a tamper-evident ledger.
 
