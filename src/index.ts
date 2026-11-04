@@ -1,6 +1,6 @@
 export { defineAction } from "./action.ts";
-export { TollgateError, type TollgateErrorCode } from "./errors.ts";
-export { Tollgate, type Drift, type PlanOptions, type TollgateOptions } from "./gate.ts";
+export { GateError, type GateErrorCode } from "./errors.ts";
+export { Gate, type Drift, type PlanOptions, type GateOptions } from "./gate.ts";
 export { canonicalJson, hashValue } from "./hash.ts";
 export { verifyChain, type ChainCheck } from "./ledger.ts";
 export { approvePlan, computePlanHash, rejectPlan } from "./plan.ts";

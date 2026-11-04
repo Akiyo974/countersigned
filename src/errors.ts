@@ -1,4 +1,4 @@
-export type TollgateErrorCode =
+export type GateErrorCode =
   | "UNKNOWN_ACTION"
   | "INVALID_INPUT"
   | "PLAN_NOT_FOUND"
@@ -17,12 +17,12 @@ export type TollgateErrorCode =
  * Every refusal carries a stable code (for programs) and a message written so that
  * an LLM reading it knows what to do next.
  */
-export class TollgateError extends Error {
-  readonly code: TollgateErrorCode;
+export class GateError extends Error {
+  readonly code: GateErrorCode;
   readonly details?: unknown;
-  constructor(code: TollgateErrorCode, message: string, details?: unknown) {
+  constructor(code: GateErrorCode, message: string, details?: unknown) {
     super(message);
-    this.name = "TollgateError";
+    this.name = "GateError";
     this.code = code;
     this.details = details;
   }

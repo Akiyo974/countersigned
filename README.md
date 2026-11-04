@@ -1,14 +1,16 @@
-# tollgate
+# countersigned
 
-[![ci](https://github.com/Akiyo974/tollgate/actions/workflows/ci.yml/badge.svg)](https://github.com/Akiyo974/tollgate/actions/workflows/ci.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) ![dependencies: 0](https://img.shields.io/badge/dependencies-0-brightgreen.svg) ![node: >=22.18](https://img.shields.io/badge/node-%3E%3D22.18-339933.svg)
+[![ci](https://github.com/Akiyo974/countersigned/actions/workflows/ci.yml/badge.svg)](https://github.com/Akiyo974/countersigned/actions/workflows/ci.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) ![dependencies: 0](https://img.shields.io/badge/dependencies-0-brightgreen.svg) ![node: >=22.18](https://img.shields.io/badge/node-%3E%3D22.18-339933.svg)
 
-**Terraform-style `plan` / `apply` for AI agent actions.**
+**Your agent proposes. A human countersigns. Then it runs, verified.**
+
+Terraform-style `plan` / `apply` for AI agent actions.
 
 Your agent can read anything. When it wants to *change* something, it proposes a plan: the current state is read, business rules are checked, the exact effects are previewed. A human (or a policy) approves that exact plan. Then `apply` re-checks that the world has not moved, executes with idempotency keys, **verifies every step against the real system**, rolls back in reverse if anything fails, and writes it all to a tamper-evident ledger.
 
 Zero dependencies. TypeScript. Speaks MCP out of the box, so it works with Claude, Cursor, VS Code, OpenAI Agents and anything else that talks Model Context Protocol.
 
-![tollgate demo: an agent proposes, is refused without approval, a human approves, apply is verified, a silent ERP failure is rolled back](docs/assets/demo.gif)
+![countersigned demo: an agent proposes, is refused without approval, a human approves, apply is verified, a silent ERP failure is rolled back](docs/assets/demo.gif)
 
 ```
 agent ──plan──▶ observe state · check rules · preview effects · policy decides
@@ -26,7 +28,7 @@ agent ──apply─▶ recheck state (drift? refuse) ─▶ execute(idempotency
 
 Agents moved from *answering* to *doing*. Writing to real systems (an ERP, a CRM, a billing API, a database) breaks in ways a better prompt cannot fix:
 
-| What goes wrong | What tollgate does |
+| What goes wrong | What countersigned does |
 | --- | --- |
 | The agent acts on state that changed after the human said yes | Snapshot at plan time, re-observe before apply, refuse on drift (`STALE_STATE`) |
 | A retry or a crash sends the email twice, books the order twice | Stable idempotency key per step, forwarded to your system; completed steps are never repeated |
@@ -34,14 +36,14 @@ Agents moved from *answering* to *doing*. Writing to real systems (an ERP, a CRM
 | Step 3 fails, steps 1 and 2 already changed things | Saga compensation in reverse order; irreversible leftovers are flagged for a human |
 | The approved plan is not the plan that runs | Approval is pinned to a SHA-256 of the plan; any edit invalidates it |
 | The agent approves itself | Approval lives outside the agent's process and tools; requester cannot approve |
-| "What exactly happened at 3am?" | Append-only, hash-chained ledger; `tollgate ledger verify` detects edits and deletions |
+| "What exactly happened at 3am?" | Append-only, hash-chained ledger; `countersigned ledger verify` detects edits and deletions |
 
 Terraform solved this for infrastructure years ago. Nobody had generalized it to the rest of the systems agents now touch.
 
 ## See it
 
 ```bash
-git clone https://github.com/Akiyo974/tollgate && cd tollgate
+git clone https://github.com/Akiyo974/countersigned && cd countersigned
 node examples/erp/demo.ts        # Node >= 22.18, no install needed
 ```
 
@@ -61,7 +63,7 @@ The GIF above is generated from real runs of `examples/erp/agent.ts` and the CLI
 An action is five small functions. Writing them forces the questions that matter *before* the agent runs in production.
 
 ```ts
-import { defineAction, t } from "tollgate";
+import { defineAction, t } from "countersigned";
 
 export const setReorderPoint = defineAction({
   name: "set_reorder_point",
@@ -98,10 +100,10 @@ Already using zod, valibot or ajv? Wrap it with `t.custom(jsonSchema, parse)`.
 ## Use it from code
 
 ```ts
-import { FileStore, rules, Tollgate } from "tollgate";
+import { FileStore, rules, Gate } from "countersigned";
 
-const gate = new Tollgate({
-  store: new FileStore(".tollgate"),
+const gate = new Gate({
+  store: new FileStore(".countersigned"),
   rules: [rules.irreversibleNeedsApproval(), rules.autoApprove("set_reorder_point"), rules.maxEffects(20)],
 }).register(setReorderPoint, rescheduleOrder, emailSupplier);
 
@@ -115,16 +117,16 @@ const report = await gate.apply(plan.id);        // safe to call again
 ## Use it as an MCP server
 
 ```ts
-import { serveStdio } from "tollgate/mcp";
+import { serveStdio } from "countersigned/mcp";
 serveStdio(gate, { agentId: "claude-desktop" });
 ```
 
-The agent sees `tollgate_list_actions`, `tollgate_plan`, `tollgate_get_plan`, `tollgate_apply`, plus every read-only action as a direct tool. It never sees an approve tool. Example config (Claude Desktop, Claude Code, Cursor):
+The agent sees `countersigned_list_actions`, `countersigned_plan`, `countersigned_get_plan`, `countersigned_apply`, plus every read-only action as a direct tool. It never sees an approve tool. Example config (Claude Desktop, Claude Code, Cursor):
 
 ```json
 {
   "mcpServers": {
-    "erp": { "command": "node", "args": ["/path/to/tollgate/examples/erp/mcp-server.ts"] }
+    "erp": { "command": "node", "args": ["/path/to/countersigned/examples/erp/mcp-server.ts"] }
   }
 }
 ```
@@ -132,10 +134,10 @@ The agent sees `tollgate_list_actions`, `tollgate_plan`, `tollgate_get_plan`, `t
 Then, in another terminal, the human side:
 
 ```bash
-npx tollgate list                 # what is waiting
-npx tollgate show pl_...          # intent, before/after, why it needs you
-npx tollgate approve pl_...       # signs this exact plan hash
-npx tollgate ledger verify        # chain intact?
+npx countersigned list                 # what is waiting
+npx countersigned show pl_...          # intent, before/after, why it needs you
+npx countersigned approve pl_...       # signs this exact plan hash
+npx countersigned ledger verify        # chain intact?
 ```
 
 ## Policies
@@ -157,7 +159,7 @@ Honest list, because safety tooling that oversells is worse than none.
 - **Drift detection is as good as your `observe()`.** Observe exactly what the action depends on, from the source of truth.
 - **The recheck is time-of-check.** A change between the recheck and the write is still possible; pass the idempotency key and use your system's own concurrency control (ETags, row versions) in `execute` to close that window.
 - **Compensation is not a transaction.** It is a best effort correction. That is why reversibility is declared per action, and irreversible effects that already happened are reported as `unrecoverable` instead of hidden.
-- **If `execute()` throws, the outcome is unknown.** tollgate does not guess: the step is reported for a human, the key lets you look it up.
+- **If `execute()` throws, the outcome is unknown.** countersigned does not guess: the step is reported for a human, the key lets you look it up.
 - **On resume after a crash**, finished steps are skipped and the up-front recheck is not repeated (earlier steps legitimately changed the state).
 - **FileStore is single-machine.** Plans and ledger are safe across processes on one host. For several hosts, implement the `Store` interface on your database (six async methods).
 - **The ledger is tamper-evident, not tamper-proof.** Anyone who can rewrite the whole file can rewrite the chain. Anchor the latest hash somewhere else (a git commit, a log service) if that matters.

@@ -2,7 +2,7 @@
 
 ## Our pledge
 
-We want tollgate to be a welcoming project for everyone, whatever their experience, background, identity or the language they write in. English is the working language of the repository, but nobody will be judged on their English.
+We want countersigned to be a welcoming project for everyone, whatever their experience, background, identity or the language they write in. English is the working language of the repository, but nobody will be judged on their English.
 
 ## Expected behaviour
 

@@ -25,7 +25,7 @@ COLORS = {31: (255, 123, 114), 32: (63, 185, 80), 33: (210, 153, 34), 36: (121, 
 PROMPT = (63, 185, 80)
 
 store = tempfile.mkdtemp()
-env = dict(os.environ, TOLLGATE_DIR=store, FORCE_COLOR="1")
+env = dict(os.environ, COUNTERSIGNED_DIR=store, FORCE_COLOR="1")
 env.pop("NO_COLOR", None)
 
 def run(cmd):
@@ -43,14 +43,14 @@ SCENES = [
     ("agent apply", "node examples/erp/agent.ts apply", 2.6),
     ("CLEAR", None, 0),
     ("# you review the exact effects and approve, from your own terminal:", None, 0.3),
-    ("tollgate approve {id} --yes", "node src/cli.ts approve {id} --by christen --yes | tail -1", 1.6),
+    ("countersigned approve {id} --yes", "node src/cli.ts approve {id} --by christen --yes | tail -1", 1.6),
     ("agent apply", "node examples/erp/agent.ts apply", 3.0),
     ("# the agent retries (timeout, crash, confused model). nothing runs twice:", None, 0.3),
     ("agent apply | tail -1", "node examples/erp/agent.ts apply | tail -1", 2.4),
     ("CLEAR", None, 0),
     ("# the ERP answers OK, but the write did not stick:", None, 0.3),
     ("agent flaky", "node examples/erp/agent.ts flaky", 4.5),
-    ("tollgate ledger verify", "node src/cli.ts ledger verify", 3.5),
+    ("countersigned ledger verify", "node src/cli.ts ledger verify", 3.5),
 ]
 
 ANSI = re.compile(r"\x1b\[([0-9;]*)m")
@@ -98,7 +98,7 @@ def draw(cursor=None):
     d.rectangle([0, 0, W, BAR], fill=BARBG)
     for i, col in enumerate([(255, 95, 86), (255, 189, 46), (39, 201, 63)]):
         d.ellipse([16 + i * 20, 12, 28 + i * 20, 24], fill=col)
-    title = "tollgate: plan / approve / apply for AI agent actions"
+    title = "countersigned: plan / approve / apply for AI agent actions"
     d.text(((W - FONT.getlength(title)) / 2, 9), title, font=FONT, fill=DIM)
     visible = buf[-ROWS:]
     for r, segs in enumerate(visible):

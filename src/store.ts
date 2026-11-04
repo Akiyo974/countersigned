@@ -75,7 +75,7 @@ export class FileStore implements Store {
   private readonly ledgerPath: string;
   private readonly lockPath: string;
 
-  constructor(dir = ".tollgate") {
+  constructor(dir = ".countersigned") {
     this.dir = dir;
     this.plansDir = join(dir, "plans");
     this.ledgerPath = join(dir, "ledger.jsonl");

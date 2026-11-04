@@ -1,4 +1,4 @@
-import { TollgateError } from "./errors.ts";
+import { GateError } from "./errors.ts";
 import { hashValue, newId, sha256 } from "./hash.ts";
 import { verifyChain, type ChainCheck } from "./ledger.ts";
 import { approvePlan, assertIntact, computePlanHash, rejectPlan, type DecideOptions } from "./plan.ts";
@@ -18,7 +18,7 @@ import type {
   Verdict,
 } from "./types.ts";
 
-export interface TollgateOptions {
+export interface GateOptions {
   store?: Store;
   /** Policy rules. With none, reads run and every write waits for a human. */
   rules?: PolicyRule[];
@@ -57,7 +57,7 @@ const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(
  *   apply()   recheck state for drift, execute with idempotency keys, verify every step
  *             against the real system, compensate in reverse on failure, ledger everything.
  */
-export class Tollgate {
+export class Gate {
   readonly store: Store;
   private readonly registry = new Map<string, AnyAction>();
   private readonly rules: PolicyRule[];
@@ -65,7 +65,7 @@ export class Tollgate {
   private readonly maxSteps: number;
   private readonly clock: () => Date;
 
-  constructor(opts: TollgateOptions = {}) {
+  constructor(opts: GateOptions = {}) {
     this.store = opts.store ?? new MemoryStore();
     this.rules = opts.rules ?? [];
     this.ttl = opts.approvalTtlMs ?? 15 * 60_000;
@@ -75,7 +75,7 @@ export class Tollgate {
 
   register(...actions: AnyAction[]): this {
     for (const a of actions) {
-      if (this.registry.has(a.name)) throw new TollgateError("INVALID_DEFINITION", `Action "${a.name}" is registered twice.`);
+      if (this.registry.has(a.name)) throw new GateError("INVALID_DEFINITION", `Action "${a.name}" is registered twice.`);
       this.registry.set(a.name, a);
     }
     return this;
@@ -94,7 +94,7 @@ export class Tollgate {
   private action(name: string): AnyAction {
     const a = this.registry.get(name);
     if (!a) {
-      throw new TollgateError("UNKNOWN_ACTION", `Unknown action "${name}". Available: ${[...this.registry.keys()].join(", ") || "(none)"}.`);
+      throw new GateError("UNKNOWN_ACTION", `Unknown action "${name}". Available: ${[...this.registry.keys()].join(", ") || "(none)"}.`);
     }
     return a;
   }
@@ -103,13 +103,13 @@ export class Tollgate {
 
   async plan(requests: StepRequest[], opts: PlanOptions): Promise<Plan> {
     if (!Array.isArray(requests) || requests.length === 0) {
-      throw new TollgateError("INVALID_INPUT", "A plan needs at least one step.");
+      throw new GateError("INVALID_INPUT", "A plan needs at least one step.");
     }
     if (requests.length > this.maxSteps) {
-      throw new TollgateError("INVALID_INPUT", `A plan can have at most ${this.maxSteps} steps; split the work.`);
+      throw new GateError("INVALID_INPUT", `A plan can have at most ${this.maxSteps} steps; split the work.`);
     }
     const intent = (opts.intent ?? "").trim();
-    if (!intent) throw new TollgateError("INVALID_INPUT", "Say what you are trying to achieve in `intent`: the approver reads it.");
+    if (!intent) throw new GateError("INVALID_INPUT", "Say what you are trying to achieve in `intent`: the approver reads it.");
 
     // Validate everything first and report every problem at once: one round-trip for the model.
     const problems: string[] = [];
@@ -124,7 +124,7 @@ export class Tollgate {
       }
     });
     if (problems.length) {
-      throw new TollgateError("INVALID_INPUT", `Plan rejected before anything ran. Fix and resend:\n- ${problems.join("\n- ")}`, problems);
+      throw new GateError("INVALID_INPUT", `Plan rejected before anything ran. Fix and resend:\n- ${problems.join("\n- ")}`, problems);
     }
 
     const id = newId("pl");
@@ -211,7 +211,7 @@ export class Tollgate {
 
   async get(id: string): Promise<Plan> {
     const plan = await this.store.getPlan(id);
-    if (!plan) throw new TollgateError("PLAN_NOT_FOUND", `No plan with id ${id}.`);
+    if (!plan) throw new GateError("PLAN_NOT_FOUND", `No plan with id ${id}.`);
     return plan;
   }
 
@@ -224,19 +224,19 @@ export class Tollgate {
 
     switch (plan.status) {
       case "denied":
-        throw new TollgateError("PLAN_DENIED", `Plan ${id} was denied by policy: ${plan.reasons.join("; ")}`);
+        throw new GateError("PLAN_DENIED", `Plan ${id} was denied by policy: ${plan.reasons.join("; ")}`);
       case "pending_approval":
-        throw new TollgateError("NOT_APPROVED", `Plan ${id} is waiting for a human. Tell the user to run: tollgate approve ${id}`);
+        throw new GateError("NOT_APPROVED", `Plan ${id} is waiting for a human. Tell the user to run: countersigned approve ${id}`);
       case "rejected":
-        throw new TollgateError("NOT_APPROVED", `Plan ${id} was rejected by ${plan.rejection?.by}: ${plan.rejection?.reason}`);
+        throw new GateError("NOT_APPROVED", `Plan ${id} was rejected by ${plan.rejection?.by}: ${plan.rejection?.reason}`);
       case "stale":
-        throw new TollgateError("STALE_STATE", `Plan ${id} is stale: the world changed since approval. Plan again.`);
+        throw new GateError("STALE_STATE", `Plan ${id} is stale: the world changed since approval. Plan again.`);
       case "expired":
-        throw new TollgateError("EXPIRED", `Plan ${id} expired. Plan again.`);
+        throw new GateError("EXPIRED", `Plan ${id} expired. Plan again.`);
     }
 
     assertIntact(plan);
-    if (!plan.approval) throw new TollgateError("NOT_APPROVED", `Plan ${id} has no approval.`);
+    if (!plan.approval) throw new GateError("NOT_APPROVED", `Plan ${id} has no approval.`);
 
     const now = this.clock();
     const resuming = plan.status === "applying";
@@ -245,11 +245,11 @@ export class Tollgate {
       if (now.getTime() > Date.parse(plan.expiresAt)) {
         await this.store.updatePlan(id, (p) => ({ ...p, status: "expired", updatedAt: now.toISOString() }));
         await this.store.appendLedger({ type: "plan.expired", planId: id, at: now.toISOString() });
-        throw new TollgateError("EXPIRED", `Plan ${id} expired at ${plan.expiresAt} before it was applied. Plan again.`);
+        throw new GateError("EXPIRED", `Plan ${id} expired at ${plan.expiresAt} before it was applied. Plan again.`);
       }
       await this.recheck(plan);
       await this.store.updatePlan(id, (p) => {
-        if (p.status !== "approved") throw new TollgateError("ALREADY_DECIDED", `Plan ${id} is already being applied by another process.`);
+        if (p.status !== "approved") throw new GateError("ALREADY_DECIDED", `Plan ${id} is already being applied by another process.`);
         return { ...p, status: "applying", updatedAt: now.toISOString() };
       });
       await this.store.appendLedger({ type: "apply.started", planId: id, at: now.toISOString() });
@@ -278,13 +278,13 @@ export class Tollgate {
     await this.store.appendLedger({ type: "plan.stale", planId: plan.id, at, data: { drifts, violations } });
     if (drifts.length) {
       const which = drifts.map((d) => `step ${d.step} (${d.action})`).join(", ");
-      throw new TollgateError(
+      throw new GateError(
         "STALE_STATE",
         `Refused: state changed since plan ${plan.id} was approved, at ${which}. Nothing was executed. Re-read the state and plan again.`,
         drifts,
       );
     }
-    throw new TollgateError("PRECONDITION_FAILED", `Refused: preconditions no longer hold. Nothing was executed.\n- ${violations.join("\n- ")}`, violations);
+    throw new GateError("PRECONDITION_FAILED", `Refused: preconditions no longer hold. Nothing was executed.\n- ${violations.join("\n- ")}`, violations);
   }
 
   private async execute(plan: Plan): Promise<ApplyReport> {
@@ -299,7 +299,7 @@ export class Tollgate {
     for (const step of plan.steps) {
       const action = this.action(step.action);
       const input = action.input.parse(step.input);
-      const key = `tg_${sha256(`${plan.hash}:${step.index}`).slice(0, 32)}`;
+      const key = `cs_${sha256(`${plan.hash}:${step.index}`).slice(0, 32)}`;
       const ctx = { planId: plan.id, step: step.index, idempotencyKey: key, before: step.before };
       const outcome = outcomes[step.index]!;
 
@@ -379,7 +379,7 @@ export class Tollgate {
           unrecoverable.push({ index: u.index, action: step.action, reason: "irreversible step already took effect" });
           continue;
         }
-        const key = `tg_${sha256(`${plan.hash}:${u.index}`).slice(0, 32)}`;
+        const key = `cs_${sha256(`${plan.hash}:${u.index}`).slice(0, 32)}`;
         try {
           await action.compensate(action.input.parse(step.input), u.result, {
             planId: plan.id,
@@ -419,12 +419,12 @@ export class Tollgate {
    */
   async run(action: string, input: unknown, opts: Partial<PlanOptions> = {}): Promise<unknown> {
     const plan = await this.plan([{ action, input }], { intent: opts.intent ?? `run ${action}`, requestedBy: opts.requestedBy });
-    if (plan.status === "denied") throw new TollgateError("PLAN_DENIED", `Denied: ${plan.reasons.join("; ")}`, plan);
+    if (plan.status === "denied") throw new GateError("PLAN_DENIED", `Denied: ${plan.reasons.join("; ")}`, plan);
     if (plan.status !== "approved") {
-      throw new TollgateError("NOT_APPROVED", `"${action}" needs a human. Plan ${plan.id} is waiting: tollgate approve ${plan.id}`, plan);
+      throw new GateError("NOT_APPROVED", `"${action}" needs a human. Plan ${plan.id} is waiting: countersigned approve ${plan.id}`, plan);
     }
     const report = await this.apply(plan.id);
-    if (report.status !== "applied") throw new TollgateError("PRECONDITION_FAILED", report.message, report);
+    if (report.status !== "applied") throw new GateError("PRECONDITION_FAILED", report.message, report);
     return report.steps[0]?.result;
   }
 

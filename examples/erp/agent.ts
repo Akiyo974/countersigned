@@ -6,11 +6,11 @@
  *   node examples/erp/agent.ts apply     apply the last plan
  *   node examples/erp/agent.ts flaky     a plan where the ERP silently drops a write
  *
- * State lives in $TOLLGATE_DIR (default ./.tollgate).
+ * State lives in $COUNTERSIGNED_DIR (default ./.countersigned).
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { FileStore, rules, Tollgate, TollgateError } from "../../src/index.ts";
+import { FileStore, rules, Gate, GateError } from "../../src/index.ts";
 import { describePlan, describeReport } from "../../src/mcp.ts";
 import { erpActions } from "./actions.ts";
 import { FakeErp } from "./fake-erp.ts";
@@ -19,12 +19,12 @@ const color = process.stdout.isTTY || !!process.env.FORCE_COLOR;
 const c = (n: number) => (s: string) => (color ? `\x1b[${n}m${s}\x1b[0m` : s);
 const [bold, dim, red, green, yellow] = [c(1), c(2), c(31), c(32), c(33)];
 
-const dir = process.env.TOLLGATE_DIR ?? ".tollgate";
+const dir = process.env.COUNTERSIGNED_DIR ?? ".countersigned";
 mkdirSync(dir, { recursive: true });
 const erp = new FakeErp({ file: join(dir, "erp.json") });
-const gate = new Tollgate({ store: new FileStore(dir), rules: [rules.irreversibleNeedsApproval()] }).register(...erpActions(erp));
+const gate = new Gate({ store: new FileStore(dir), rules: [rules.irreversibleNeedsApproval()] }).register(...erpActions(erp));
 const lastFile = join(dir, "last-plan");
-const hint = (id: string) => `tollgate approve ${id}`;
+const hint = (id: string) => `countersigned approve ${id}`;
 
 function paintPlan(text: string): string {
   return text
@@ -86,6 +86,6 @@ async function main(cmd: string | undefined): Promise<void> {
 }
 
 main(process.argv[2]).catch((e) => {
-  console.log(red(e instanceof TollgateError ? `[${e.code}] ${e.message}` : String(e)));
+  console.log(red(e instanceof GateError ? `[${e.code}] ${e.message}` : String(e)));
   process.exitCode = 1;
 });

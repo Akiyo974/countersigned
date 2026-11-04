@@ -40,7 +40,7 @@ SHA-256 over canonical JSON of: id, creation and expiry time, intent, requester,
 
 ## Idempotency keys
 
-`tg_` + the first 32 hex chars of `sha256(planHash + ":" + stepIndex)`. Stable across retries and restarts, unique per step. Forward it: an `Idempotency-Key` header, an external document number, a dedupe column. That is what makes "execute threw, did it happen?" answerable.
+`cs_` + the first 32 hex chars of `sha256(planHash + ":" + stepIndex)`. Stable across retries and restarts, unique per step. Forward it: an `Idempotency-Key` header, an external document number, a dedupe column. That is what makes "execute threw, did it happen?" answerable.
 
 ## Ledger events
 
