@@ -12,6 +12,22 @@ import type { LedgerEntry, LedgerInput, Plan } from "./types.ts";
  *
  * Imported from its own entry point so the core never loads `node:sqlite` unless you ask for it.
  */
+const sleepSync = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+const isBusy = (e: unknown) => e instanceof Error && /database is locked|SQLITE_BUSY/i.test(e.message);
+
+function retryBusy(fn: () => void, timeoutMs = 15_000): void {
+  const deadline = Date.now() + timeoutMs;
+  for (let wait = 5; ; wait = Math.min(wait * 2, 200)) {
+    try {
+      fn();
+      return;
+    } catch (e) {
+      if (!isBusy(e) || Date.now() > deadline) throw e;
+      sleepSync(wait + Math.floor(Math.random() * wait));
+    }
+  }
+}
+
 export class SqliteStore implements Store {
   readonly db: DatabaseSync;
 
@@ -19,7 +35,9 @@ export class SqliteStore implements Store {
     this.db = new DatabaseSync(path);
     // busy_timeout first: every following statement, including the WAL switch, may meet a lock.
     this.db.exec("PRAGMA busy_timeout = 10000;");
-    this.db.exec(`
+    // Switching to WAL and creating the schema can still report "locked" while another process
+    // does the same (SQLite does not always call the busy handler there, notably on Windows).
+    retryBusy(() => this.db.exec(`
       PRAGMA journal_mode = WAL;
       PRAGMA foreign_keys = ON;
       CREATE TABLE IF NOT EXISTS plans (
@@ -36,12 +54,13 @@ export class SqliteStore implements Store {
         data    TEXT NOT NULL
       );
       CREATE INDEX IF NOT EXISTS ledger_plan ON ledger(plan_id);
-    `);
+    `));
   }
 
   /** BEGIN IMMEDIATE takes the write lock up front, so read-modify-write cannot interleave across processes. */
   private tx<T>(fn: () => T): T {
-    this.db.exec("BEGIN IMMEDIATE");
+    // Only acquiring the lock is retried; once inside, fn runs exactly once.
+    retryBusy(() => this.db.exec("BEGIN IMMEDIATE"));
     try {
       const out = fn();
       this.db.exec("COMMIT");
