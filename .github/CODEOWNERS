@@ -1,0 +1,7 @@
+# Every change is reviewed by the maintainer; safety-critical files explicitly.
+*                 @Akiyo974
+/src/gate.ts      @Akiyo974
+/src/plan.ts      @Akiyo974
+/src/ledger.ts    @Akiyo974
+/src/store.ts     @Akiyo974
+/src/mcp.ts       @Akiyo974

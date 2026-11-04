@@ -1,0 +1,27 @@
+name: Feature request
+description: Propose an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do with an agent, and where does tollgate get in the way or fall short?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What you would like. API sketches welcome.
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety impact
+      description: Could this weaken any guarantee (approval pinning, drift detection, idempotency, verification, ledger)? How would you keep it safe?
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to implement this

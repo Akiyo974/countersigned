@@ -1,0 +1,42 @@
+name: Bug report
+description: Something does not work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **If this is a safety bypass** (applying an unapproved plan, double execution, undetected ledger edit), do not file it here: use the Security tab, "Report a vulnerability".
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: The smallest action definition and calls that show the problem.
+      render: ts
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: tollgate version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node version and OS
+      placeholder: "Node 22.18, Ubuntu 24.04"
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      options: [Core (plan / apply), Policies, Store / ledger, MCP server, CLI, Docs, Other]

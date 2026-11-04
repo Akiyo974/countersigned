@@ -1,0 +1,64 @@
+{
+  "name": "tollgate",
+  "version": "0.1.0",
+  "description": "Plan / approve / apply for AI agent actions. Terraform-style safety for any tool call: drift checks, idempotency, verified completion, compensation and a tamper-evident ledger. Zero dependencies, MCP native.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Christen Dijoux (https://github.com/Akiyo974)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Akiyo974/tollgate.git"
+  },
+  "homepage": "https://github.com/Akiyo974/tollgate#readme",
+  "bugs": {
+    "url": "https://github.com/Akiyo974/tollgate/issues"
+  },
+  "keywords": [
+    "ai-agents",
+    "mcp",
+    "model-context-protocol",
+    "llm",
+    "agent-safety",
+    "human-in-the-loop",
+    "idempotency",
+    "saga",
+    "compensation",
+    "audit-log",
+    "erp"
+  ],
+  "engines": {
+    "node": ">=22.18"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "default": "./dist/mcp.js"
+    }
+  },
+  "bin": {
+    "tollgate": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "demo": "node examples/erp/demo.ts",
+    "cli": "node src/cli.ts",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "typescript": "^5.9.0"
+  }
+}

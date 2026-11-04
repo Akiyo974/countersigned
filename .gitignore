@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.tollgate/
+*.tmp
+.DS_Store
