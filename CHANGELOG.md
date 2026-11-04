@@ -4,6 +4,21 @@
 
 ---
 
+## 0.2.1 (2026-11-04)
+
+Final pre-launch security review.
+
+- The CLI now always shows each step's exact input, which is part of what is signed. Before, an approver saw only the action's own summary, so an agent could put content in a field the summary left out (for example an email body). `approve` always shows the full input; `show --full` does too.
+- Approvals are pinned to the version that was displayed (`expectedHash`); a plan that changes between display and approval is refused.
+- A `resume()` that takes over at the exact moment a live apply records a step intent can no longer cause that step to run twice: ownership is checked again after the intent is written.
+- Invisible format characters (zero-width, BOM, soft hyphen, tag characters, bidi marks) are refused in intents and neutralised in CLI output.
+- `t.string({ pattern })` validates consistently when given a `/g` or `/y` regex.
+- A damaged ledger line is reported by `ledger verify` with its line number instead of crashing the CLI.
+- Failure and compensation ledger entries are anchored on the plan too, so truncating them is detected.
+- MCP server: bounded line buffering on stdin (a client without newlines cannot grow memory).
+- Website: strict Content-Security-Policy, no outbound connections.
+- Packaging: no source maps pointing at unshipped files; README images use absolute URLs so they render on npm; `.gitignore` covers SQLite stores and `.env` files.
+
 ## 0.2.0 (2026-11-04)
 
 ### Security (pre-launch adversarial review)

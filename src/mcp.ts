@@ -1,4 +1,3 @@
-import { createInterface } from "node:readline";
 import { GateError } from "./errors.ts";
 import type { Gate } from "./gate.ts";
 import type { JsonSchema } from "./schema.ts";
@@ -201,7 +200,7 @@ export function createMcpServer(gate: Gate, opts: McpOptions = {}) {
         return reply({
           protocolVersion: SUPPORTED_VERSIONS.includes(requested) ? requested : SUPPORTED_VERSIONS[1],
           capabilities: { tools: { listChanged: false } },
-          serverInfo: { name: opts.name ?? "countersigned", version: opts.version ?? "0.2.0" },
+          serverInfo: { name: opts.name ?? "countersigned", version: opts.version ?? "0.2.1" },
           instructions:
             "Every change to the business system goes through a plan. Read freely; to change anything, call plan, " +
             "show the user the previewed effects, and wait for human approval when required. Then call apply. " +
@@ -245,12 +244,35 @@ export function createMcpServer(gate: Gate, opts: McpOptions = {}) {
 /** Serve over stdio. stdout carries protocol messages only; diagnostics go to stderr. */
 export function serveStdio(gate: Gate, opts: McpOptions = {}): void {
   const server = createMcpServer(gate, opts);
-  const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
   const write = (msg: unknown) => process.stdout.write(`${JSON.stringify(msg)}\n`);
   // Requests are handled in arrival order so plan -> apply sequences from one client stay ordered.
   let queue = Promise.resolve();
   const maxBytes = opts.maxMessageBytes ?? 1_048_576;
-  rl.on("line", (line) => {
+
+  // Our own line splitter, so a client that never sends a newline cannot grow memory without bound.
+  let pending = "";
+  let discarding = false;
+  process.stdin.setEncoding("utf8");
+  process.stdin.on("data", (chunk: string) => {
+    pending += chunk;
+    let nl: number;
+    while ((nl = pending.indexOf("\n")) >= 0) {
+      const line = pending.slice(0, nl).replace(/\r$/, "");
+      pending = pending.slice(nl + 1);
+      if (discarding) {
+        discarding = false;
+        continue;
+      }
+      onLine(line);
+    }
+    if (pending.length > maxBytes) {
+      pending = "";
+      if (!discarding) write({ jsonrpc: "2.0", id: null, error: { code: -32600, message: `Invalid Request: message larger than ${maxBytes} bytes` } });
+      discarding = true;
+    }
+  });
+
+  function onLine(line: string): void {
     if (!line.trim()) return;
     queue = queue.then(async () => {
       if (Buffer.byteLength(line) > maxBytes) {
@@ -286,6 +308,6 @@ export function serveStdio(gate: Gate, opts: McpOptions = {}): void {
     }).catch((e) => {
       process.stderr.write(`[countersigned] ${String(e)}\n`);
     });
-  });
+  }
   process.stderr.write(`[countersigned] MCP server ready on stdio (${server.tools.length} tools)\n`);
 }

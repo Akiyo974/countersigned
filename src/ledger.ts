@@ -47,7 +47,13 @@ export function verifyChain(entries: LedgerEntry[]): ChainCheck {
  * both, also anchor the latest head outside the host (see `countersigned ledger head`).
  */
 export async function verifyStore(store: Store, anchor?: { seq: number; hash: string }): Promise<ChainCheck> {
-  const entries = await store.readLedger();
+  let entries: LedgerEntry[];
+  try {
+    entries = await store.readLedger();
+  } catch (e) {
+    const line = (e as { line?: number }).line;
+    return { ok: false, entries: 0, brokenAt: line, reason: `ledger unreadable: ${e instanceof Error ? e.message : String(e)}` };
+  }
   const chain = verifyChain(entries);
   if (!chain.ok) return chain;
   const bySeq = new Map(entries.map((e) => [e.seq, e.hash]));

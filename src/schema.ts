@@ -61,6 +61,9 @@ interface StringOpts {
 }
 
 function string(opts: StringOpts = {}): Schema<string> {
+  // A /g or /y regex keeps state between test() calls; validate with a stateless copy.
+  const pattern = opts.pattern ? new RegExp(opts.pattern.source, opts.pattern.flags.replace(/[gy]/g, "")) : undefined;
+  opts = { ...opts, pattern };
   const json: JsonSchema = { type: "string" };
   if (opts.min !== undefined) json.minLength = opts.min;
   if (opts.max !== undefined) json.maxLength = opts.max;

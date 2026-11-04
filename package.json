@@ -1,6 +1,6 @@
 {
   "name": "countersigned",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Plan / approve / apply for AI agent actions. Terraform-style safety for any tool call: drift checks, idempotency, verified completion, compensation and a tamper-evident ledger. Zero dependencies, MCP native.",
   "type": "module",
   "license": "MIT",
