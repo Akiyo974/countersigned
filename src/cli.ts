@@ -9,7 +9,7 @@ import { approvePlan, rejectPlan } from "./plan.ts";
 import { FileStore } from "./store.ts";
 import type { LedgerEntry, Plan, PlanStatus } from "./types.ts";
 
-const tty = process.stdout.isTTY && !process.env.NO_COLOR;
+const tty = (process.stdout.isTTY || !!process.env.FORCE_COLOR) && !process.env.NO_COLOR;
 const paint = (code: number) => (s: string) => (tty ? `\x1b[${code}m${s}\x1b[0m` : s);
 const bold = paint(1);
 const dim = paint(2);

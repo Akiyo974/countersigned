@@ -78,7 +78,8 @@ export function describePlan(plan: Plan, approveHint: (id: string) => string): s
 export function describeReport(r: ApplyReport): string {
   const lines = [`Plan ${r.planId}: ${r.status.toUpperCase()}`, r.message];
   for (const s of r.steps) {
-    const extra = s.error ? ` (${s.error})` : s.evidence !== undefined ? ` evidence=${fmt(s.evidence)}` : "";
+    const showEvidence = (s.status === "succeeded" || s.status === "skipped_already_done") && s.evidence !== undefined;
+    const extra = s.error ? ` (${s.error})` : showEvidence ? ` evidence=${fmt(s.evidence)}` : "";
     lines.push(`  ${s.index}. ${s.action}: ${s.status}${extra}`);
   }
   for (const u of r.unrecoverable) lines.push(`  NEEDS A HUMAN: step ${u.index} ${u.action}: ${u.reason}`);
