@@ -1,7 +1,7 @@
 import { GateError } from "./errors.ts";
 import { hashValue } from "./hash.ts";
 import type { Store } from "./store.ts";
-import type { Plan } from "./types.ts";
+import type { LedgerEntry, Plan } from "./types.ts";
 
 /**
  * The plan hash covers everything that defines behaviour: what runs, with which input,
@@ -35,6 +35,13 @@ export function assertIntact(plan: Plan): void {
   }
 }
 
+/** Remembers on the plan the latest ledger entry written for it (monotonic). */
+export async function recordHead(store: Store, id: string, entry: LedgerEntry): Promise<void> {
+  await store.updatePlan(id, (p) =>
+    p.ledgerHead && p.ledgerHead.seq >= entry.seq ? p : { ...p, ledgerHead: { seq: entry.seq, hash: entry.hash } },
+  );
+}
+
 export interface DecideOptions {
   by: string;
   note?: string;
@@ -49,8 +56,8 @@ async function loadPending(store: Store, id: string, now: Date): Promise<Plan> {
     throw new GateError("ALREADY_DECIDED", `Plan ${id} is "${plan.status}", not waiting for approval.`);
   }
   if (now.getTime() > Date.parse(plan.expiresAt)) {
-    await store.updatePlan(id, (p) => ({ ...p, status: "expired", updatedAt: now.toISOString() }));
-    await store.appendLedger({ type: "plan.expired", planId: id, at: now.toISOString() });
+    await store.updatePlan(id, (p) => (p.status === "pending_approval" ? { ...p, status: "expired", updatedAt: now.toISOString() } : p));
+    await recordHead(store, id, await store.appendLedger({ type: "plan.expired", planId: id, at: now.toISOString() }));
     throw new GateError("EXPIRED", `Plan ${id} expired at ${plan.expiresAt}. The agent must plan again against fresh state.`);
   }
   return plan;
@@ -78,8 +85,8 @@ export async function approvePlan(store: Store, id: string, opts: DecideOptions)
       updatedAt: now.toISOString(),
     };
   });
-  await store.appendLedger({ type: "plan.approved", planId: id, at: now.toISOString(), data: { by, note: opts.note, planHash: plan.hash } });
-  return updated;
+  await recordHead(store, id, await store.appendLedger({ type: "plan.approved", planId: id, at: now.toISOString(), data: { by, note: opts.note, planHash: plan.hash } }));
+  return (await store.getPlan(id)) ?? updated;
 }
 
 export async function rejectPlan(store: Store, id: string, opts: DecideOptions & { reason: string }): Promise<Plan> {
@@ -91,6 +98,6 @@ export async function rejectPlan(store: Store, id: string, opts: DecideOptions &
     if (p.status !== "pending_approval") throw new GateError("ALREADY_DECIDED", `Plan ${id} was decided concurrently.`);
     return { ...p, status: "rejected", rejection: { by, at: now.toISOString(), reason: opts.reason }, updatedAt: now.toISOString() };
   });
-  await store.appendLedger({ type: "plan.rejected", planId: id, at: now.toISOString(), data: { by, reason: opts.reason } });
-  return updated;
+  await recordHead(store, id, await store.appendLedger({ type: "plan.rejected", planId: id, at: now.toISOString(), data: { by, reason: opts.reason } }));
+  return (await store.getPlan(id)) ?? updated;
 }

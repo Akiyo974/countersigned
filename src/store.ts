@@ -92,9 +92,15 @@ export class FileStore implements Store {
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
         try {
-          if (Date.now() - statSync(this.lockPath).mtimeMs > 30_000) rmSync(this.lockPath, { force: true });
+          if (Date.now() - statSync(this.lockPath).mtimeMs > 30_000) {
+            // Break a stale lock atomically: only one process can rename it away, the others
+            // get ENOENT and simply retry the normal acquisition.
+            const graveyard = `${this.lockPath}.stale.${process.pid}.${Date.now()}`;
+            renameSync(this.lockPath, graveyard);
+            rmSync(graveyard, { force: true });
+          }
         } catch {
-          /* lock vanished between calls: retry */
+          /* someone else broke it, or it vanished: retry */
         }
         if (Date.now() > deadline) throw new Error(`could not acquire ${this.lockPath} within 10s`);
         sleepSync(5);

@@ -164,6 +164,13 @@ export interface Plan {
   rejection?: { by: string; at: string; reason: string };
   report?: ApplyReport;
   updatedAt: string;
+  /**
+   * The last ledger entry recorded for this plan. Lets verifyStore() detect a ledger whose
+   * tail was cut off, which a hash chain alone cannot notice. Not covered by the plan hash.
+   */
+  ledgerHead?: { seq: number; hash: string };
+  /** Random token of the caller currently allowed to run steps (set by apply, taken over by resume). */
+  applyOwner?: string;
 }
 
 export type LedgerEventType =
@@ -174,6 +181,7 @@ export type LedgerEventType =
   | "plan.expired"
   | "plan.stale"
   | "apply.started"
+  | "apply.resumed"
   | "step.intent"
   | "step.succeeded"
   | "step.verify_failed"

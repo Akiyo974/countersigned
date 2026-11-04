@@ -21,6 +21,8 @@ export interface McpOptions {
   agentId?: string;
   /** Command shown to the agent when a human must approve. */
   approveHint?: (planId: string) => string;
+  /** Largest accepted JSON-RPC message, in bytes. Default 1 MiB. */
+  maxMessageBytes?: number;
 }
 
 const SUPPORTED_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
@@ -180,7 +182,15 @@ export function createMcpServer(gate: Gate, opts: McpOptions = {}) {
     });
   }
 
-  async function handle(req: JsonRpcRequest): Promise<Record<string, unknown> | undefined> {
+  async function handle(raw: unknown): Promise<Record<string, unknown> | undefined> {
+    const invalid = (message: string) => ({ jsonrpc: "2.0", id: null, error: { code: -32600, message: `Invalid Request: ${message}` } });
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return invalid("expected an object");
+    const req = raw as JsonRpcRequest;
+    if (typeof req.method !== "string") return invalid("missing method");
+    if (req.id !== undefined && req.id !== null && typeof req.id !== "string" && typeof req.id !== "number") return invalid("bad id");
+    if (req.params !== undefined && (req.params === null || typeof req.params !== "object" || Array.isArray(req.params))) {
+      return { jsonrpc: "2.0", id: req.id ?? null, error: { code: -32602, message: "Invalid params: expected an object" } };
+    }
     const isNotification = req.id === undefined || req.id === null;
     const reply = (result: unknown) => (isNotification ? undefined : { jsonrpc: "2.0", id: req.id, result });
     const fail = (code: number, message: string) => (isNotification ? undefined : { jsonrpc: "2.0", id: req.id, error: { code, message } });
@@ -208,7 +218,9 @@ export function createMcpServer(gate: Gate, opts: McpOptions = {}) {
         const name = String(req.params?.name ?? "");
         const tool = tools.find((x) => x.name === name);
         if (!tool) return fail(-32602, `Unknown tool: ${name}`);
-        const args = (req.params?.arguments ?? {}) as Record<string, unknown>;
+        const rawArgs = req.params?.arguments ?? {};
+        if (rawArgs === null || typeof rawArgs !== "object" || Array.isArray(rawArgs)) return fail(-32602, "arguments must be an object");
+        const args = rawArgs as Record<string, unknown>;
         try {
           const out = await tool.call(args);
           return reply({
@@ -217,7 +229,7 @@ export function createMcpServer(gate: Gate, opts: McpOptions = {}) {
             isError: out.isError ?? false,
           });
         } catch (e) {
-          const text = e instanceof GateError ? `[${e.code}] ${e.message}` : `Error: ${e instanceof Error ? e.message : String(e)}`;
+          const text = e instanceof GateError ? `[${e.code}] ${e.message}` : `Error: ${e instanceof Error ? e.message : String(e)}`.slice(0, 2000);
           return reply({ content: [{ type: "text", text }], isError: true });
         }
       }
@@ -237,20 +249,42 @@ export function serveStdio(gate: Gate, opts: McpOptions = {}): void {
   const write = (msg: unknown) => process.stdout.write(`${JSON.stringify(msg)}\n`);
   // Requests are handled in arrival order so plan -> apply sequences from one client stay ordered.
   let queue = Promise.resolve();
+  const maxBytes = opts.maxMessageBytes ?? 1_048_576;
   rl.on("line", (line) => {
     if (!line.trim()) return;
     queue = queue.then(async () => {
-      let req: JsonRpcRequest | JsonRpcRequest[];
+      if (Buffer.byteLength(line) > maxBytes) {
+        write({ jsonrpc: "2.0", id: null, error: { code: -32600, message: `Invalid Request: message larger than ${maxBytes} bytes` } });
+        return;
+      }
+      let req: unknown;
       try {
-        req = JSON.parse(line) as JsonRpcRequest | JsonRpcRequest[];
+        req = JSON.parse(line);
       } catch {
         write({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } });
         return;
       }
-      const batch = Array.isArray(req) ? req : [req];
-      const out = (await Promise.all(batch.map((r) => server.handle(r).catch((e) => ({ jsonrpc: "2.0", id: r.id ?? null, error: { code: -32603, message: String(e) } })))))
-        .filter((x) => x !== undefined);
-      if (out.length) write(Array.isArray(req) ? out : out[0]);
+      const isBatch = Array.isArray(req);
+      const batch: unknown[] = isBatch ? (req as unknown[]) : [req];
+      if (isBatch && batch.length === 0) {
+        write({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Invalid Request: empty batch" } });
+        return;
+      }
+      // Requests in a batch run one after another, never concurrently.
+      const out: Record<string, unknown>[] = [];
+      for (const r of batch) {
+        try {
+          const res = await server.handle(r);
+          if (res) out.push(res);
+        } catch (e) {
+          const id = r !== null && typeof r === "object" && "id" in r ? ((r as { id?: unknown }).id ?? null) : null;
+          out.push({ jsonrpc: "2.0", id, error: { code: -32603, message: "Internal error" } });
+          process.stderr.write(`[countersigned] internal error: ${e instanceof Error ? e.stack : String(e)}\n`);
+        }
+      }
+      if (out.length) write(isBatch ? out : out[0]);
+    }).catch((e) => {
+      process.stderr.write(`[countersigned] ${String(e)}\n`);
     });
   });
   process.stderr.write(`[countersigned] MCP server ready on stdio (${server.tools.length} tools)\n`);

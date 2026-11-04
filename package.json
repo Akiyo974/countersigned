@@ -39,6 +39,10 @@
     "./mcp": {
       "types": "./dist/mcp.d.ts",
       "default": "./dist/mcp.js"
+    },
+    "./sqlite": {
+      "types": "./dist/sqlite-store.d.ts",
+      "default": "./dist/sqlite-store.js"
     }
   },
   "bin": {

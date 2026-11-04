@@ -170,7 +170,7 @@ describe("apply", () => {
     assert.equal(erp.data.outbox.length, 1);
   });
 
-  it("resumes after a crash without redoing finished steps", async () => {
+  it("an interrupted apply is never resumed implicitly: apply refuses, only an operator can resume", async () => {
     const { erp, gate, store } = setup();
     const plan = await gate.plan(
       [
@@ -183,15 +183,67 @@ describe("apply", () => {
     // Simulate a crash right after step 0 succeeded: the ledger has it, the plan says "applying".
     const actions = erpActions(erp);
     await store.updatePlan(plan.id, (p) => ({ ...p, status: "applying" }));
-    const key = (await import("../src/hash.ts")).sha256(`${plan.hash}:0`).slice(0, 32);
-    const sent = await actions[3]!.execute(plan.steps[0]!.input, { planId: plan.id, step: 0, idempotencyKey: `cs_${key}`, before: null });
-    await store.appendLedger({ type: "step.succeeded", planId: plan.id, step: 0, key: `cs_${key}`, data: { result: sent } });
+    const key = `cs_${(await import("../src/hash.ts")).sha256(`${plan.hash}:0`).slice(0, 32)}`;
+    const sent = await actions[3]!.execute(plan.steps[0]!.input, { planId: plan.id, step: 0, idempotencyKey: key, before: null });
+    await store.appendLedger({ type: "step.intent", planId: plan.id, step: 0, key });
+    await store.appendLedger({ type: "step.succeeded", planId: plan.id, step: 0, key, data: { result: sent } });
 
-    const report = await gate.apply(plan.id);
+    await assert.rejects(gate.apply(plan.id), code("APPLY_IN_PROGRESS"));
+    const report = await gate.resume(plan.id, { by: "ops" });
     assert.equal(report.status, "applied");
     assert.equal(report.steps[0]!.status, "skipped_already_done");
     assert.equal(erp.data.outbox.length, 1);
     assert.equal(erp.getItem("WASH-120")!.reorderPoint, 8);
+  });
+
+  it("resume never re-executes a step that started without a recorded outcome", async () => {
+    const { erp, gate, store } = setup();
+    const plan = await gate.plan(
+      [
+        { action: "set_reorder_point", input: { sku: "WASH-120", reorderPoint: 8 } },
+        { action: "email_supplier", input: { to: "po@acme.co", subject: "PO 4471", body: "Please confirm delivery." } },
+      ],
+      { intent: "x" },
+    );
+    await gate.approve(plan.id, { by: "alice" });
+    await store.updatePlan(plan.id, (p) => ({ ...p, status: "applying" }));
+    const k0 = `cs_${(await import("../src/hash.ts")).sha256(`${plan.hash}:0`).slice(0, 32)}`;
+    const k1 = `cs_${(await import("../src/hash.ts")).sha256(`${plan.hash}:1`).slice(0, 32)}`;
+    // Step 0 really happened but the crash hit before "succeeded" was written.
+    erp.setReorderPoint("WASH-120", 8);
+    await store.appendLedger({ type: "step.intent", planId: plan.id, step: 0, key: k0 });
+    // Step 1 started too, but the email never left.
+    await store.appendLedger({ type: "step.intent", planId: plan.id, step: 1, key: k1 });
+
+    const report = await gate.resume(plan.id, { by: "ops" });
+    // verify() confirmed step 0 against the ERP, then step 1 was in doubt, so step 0 was rolled back.
+    assert.equal(report.steps[0]!.status, "compensated");
+    assert.equal(erp.getItem("WASH-120")!.reorderPoint, 5);
+    assert.equal(report.steps[1]!.status, "failed");
+    assert.match(report.steps[1]!.error!, /in doubt after interruption/);
+    assert.equal(erp.data.outbox.length, 0, "the irreversible step was not blindly re-run");
+    assert.equal(report.status, "failed");
+  });
+
+  it("two concurrent applies: exactly one executes", async () => {
+    const { gate } = setup();
+    const plan = await gate.plan([{ action: "set_reorder_point", input: { sku: "WASH-120", reorderPoint: 8 } }], { intent: "x" });
+    await gate.approve(plan.id, { by: "alice" });
+    const results = await Promise.allSettled([gate.apply(plan.id), gate.apply(plan.id), gate.apply(plan.id)]);
+    const ok = results.filter((r) => r.status === "fulfilled");
+    const intents = (await gate.store.readLedger({ planId: plan.id })).filter((e) => e.type === "step.intent");
+    assert.equal(intents.length, 1);
+    assert.ok(ok.length >= 1);
+    for (const r of results) if (r.status === "rejected") assert.ok(code("APPLY_IN_PROGRESS")(r.reason));
+  });
+
+  it("refuses control characters in the intent shown to the approver", async () => {
+    const { gate } = setup();
+    await assert.rejects(
+      gate.plan([{ action: "get_item", input: { sku: "WASH-120" } }], { intent: "harmless\n  0. email_supplier [read]" }),
+      code("INVALID_INPUT"),
+    );
+    await assert.rejects(gate.plan([{ action: "get_item", input: { sku: "WASH-120" } }], { intent: "x\u001b[8m" }), code("INVALID_INPUT"));
   });
 
   it("catches a write that reported success but did not happen, and rolls back earlier steps", async () => {

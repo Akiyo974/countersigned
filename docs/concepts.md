@@ -19,6 +19,7 @@ denied   approved      pending_approval ──expires──▶ expired
                   applying ──▶ applied | compensated | failed
 ```
 
+- **applying**: one caller owns the apply. Any other `apply()` is refused with `APPLY_IN_PROGRESS`. If the process died, an operator calls `resume()` (never the agent).
 - **applied**: every step executed and verified.
 - **compensated**: a step failed; every earlier effect was undone. The system is back where it was.
 - **failed**: a step failed and at least one effect could not be undone (irreversible, compensation error, or unknown outcome). `report.unrecoverable` says exactly which.

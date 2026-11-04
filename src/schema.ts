@@ -91,8 +91,8 @@ function number(opts: NumberOpts = {}): Schema<number> {
   if (opts.max !== undefined) json.maximum = opts.max;
   if (opts.description) json.description = opts.description;
   return make(json, (v, path, issues) => {
-    if (typeof v !== "number" || Number.isNaN(v)) {
-      issues.push({ path, message: `expected number, got ${typeOf(v)}` });
+    if (typeof v !== "number" || !Number.isFinite(v)) {
+      issues.push({ path, message: typeof v === "number" ? "must be a finite number" : `expected number, got ${typeOf(v)}` });
       return v as number;
     }
     if (opts.integer && !Number.isInteger(v)) issues.push({ path, message: "must be an integer" });
@@ -165,10 +165,10 @@ function object<S extends Shape>(shape: S, opts: { description?: string } = {}):
     const input = v as Record<string, unknown>;
     const out: Record<string, unknown> = {};
     for (const key of Object.keys(input)) {
-      if (!(key in shape)) issues.push({ path: join(path, key), message: "unknown property" });
+      if (!Object.hasOwn(shape, key)) issues.push({ path: join(path, key), message: "unknown property" });
     }
     for (const [key, s] of Object.entries(shape)) {
-      if (input[key] === undefined) {
+      if (!Object.hasOwn(input, key) || input[key] === undefined) {
         if (!s.optional) issues.push({ path: join(path, key), message: "is required" });
         continue;
       }
@@ -182,11 +182,30 @@ function optional<T>(s: Schema<T>): Schema<T | undefined> & { readonly optional:
   return { ...s, optional: true } as Schema<T | undefined> & { readonly optional: true };
 }
 
-/** Accepts any JSON value. Use sparingly: an agent with an `unknown` parameter can send anything. */
+const FORBIDDEN_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+function findForbiddenKey(v: unknown, path: string): string | undefined {
+  if (v === null || typeof v !== "object") return undefined;
+  for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+    if (FORBIDDEN_KEYS.has(k)) return join(path, k);
+    const deeper = findForbiddenKey(x, Array.isArray(v) ? `${path}[${k}]` : join(path, k));
+    if (deeper) return deeper;
+  }
+  return undefined;
+}
+
+/**
+ * Accepts any JSON value. Use sparingly: an agent with an `unknown` parameter can send anything.
+ * Keys that can reach object prototypes (`__proto__`, `constructor`, `prototype`) are refused.
+ */
 function unknown(opts: { description?: string } = {}): Schema<unknown> {
   const json: JsonSchema = {};
   if (opts.description) json.description = opts.description;
-  return make(json, (v) => v);
+  return make(json, (v, path, issues) => {
+    const bad = findForbiddenKey(v, path);
+    if (bad) issues.push({ path: bad, message: "forbidden key" });
+    return v;
+  });
 }
 
 /** Wraps an external validator (zod, valibot, ajv...) so you can keep the schema library you already use. */
