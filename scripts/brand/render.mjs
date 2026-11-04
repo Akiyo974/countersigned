@@ -30,14 +30,14 @@ await still("banner", "t=banner", { width: 1280, height: 440 });
 await still("flow", "t=flow", { width: 1280, height: 560 });
 await still("lifecycle", "t=life", { width: 1280, height: 520 });
 const docs = [
-  ["header-contributing", "CS-02", "Contributing", "How to file a change", "Filed under<br><b>community</b>"],
-  ["header-security", "CS-03", "Security policy", "Report privately", "Response<br><b>within 72 hours</b>"],
-  ["header-conduct", "CS-04", "Code of conduct", "Be kind, be specific", "Applies to<br><b>everyone</b>"],
-  ["header-concepts", "CS-05", "Concepts", "How the gate thinks", "Read time<br><b>6 minutes</b>"],
-  ["header-changelog", "CS-06", "Changelog", "Every release, filed", "Format<br><b>newest first</b>"],
+  ["header-contributing", "CS-02", "Contributing", "How to file a change", "Filed under", "community"],
+  ["header-security", "CS-03", "Security policy", "Report privately", "Response", "within 72 hours"],
+  ["header-conduct", "CS-04", "Code of conduct", "Be kind, be specific", "Applies to", "everyone"],
+  ["header-concepts", "CS-05", "Concepts", "How the gate thinks", "Read time", "6 minutes"],
+  ["header-changelog", "CS-06", "Changelog", "Every release, filed", "Format", "newest first"],
 ];
-for (const [name, form, title, kicker, side] of docs) {
-  const q = new URLSearchParams({ t: "doc", form: `Form ${form}`, title, kicker, side });
+for (const [name, form, title, kicker, sidelabel, sidevalue] of docs) {
+  const q = new URLSearchParams({ t: "doc", form: `Form ${form}`, title, kicker, sidelabel, sidevalue });
   await still(name, q.toString(), { width: 1280, height: 230 });
 }
 

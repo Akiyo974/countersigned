@@ -91,7 +91,7 @@
     <div class="strip mono"><span><span class="seal"></span>countersigned</span><span class="muted" data-form>Form CS-02</span><span data-kicker>Contributing</span></div>
     <div class="body">
       <h1 class="display" data-title>Contributing</h1>
-      <div class="side mono" data-side>Filed under<br><b>docs</b></div>
+      <div class="side mono"><span data-sidelabel>Filed under</span><br><b data-sidevalue>docs</b></div>
     </div>
   </div>
 </section>
@@ -175,11 +175,14 @@
 
 <script>
   const q = new URLSearchParams(location.search);
-  const id = q.get("t") || "banner";
+  const id = ["banner", "doc", "flow", "life"].includes(q.get("t")) ? q.get("t") : "banner";
   document.getElementById(id).classList.add("on");
-  for (const [k, v] of q) {
-    const el = document.querySelector(`#${id} [data-${k}]`);
-    if (el) el.innerHTML = v;
+  // Plain text only: parameters are never interpreted as HTML.
+  const allowed = ["form", "title", "kicker", "sidelabel", "sidevalue", "version"];
+  for (const key of allowed) {
+    const value = q.get(key);
+    const el = document.getElementById(id)?.querySelector(`[data-${key}]`);
+    if (el && value !== null) el.textContent = value;
   }
 </script>
 </body>
