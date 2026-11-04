@@ -12,17 +12,27 @@ OUT = sys.argv[2]
 
 COLS, ROWS = 100, 22
 FONT_SIZE = 15
-FONT = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", FONT_SIZE)
-BOLD = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", FONT_SIZE)
+def _font(names):
+    dirs = [os.environ.get("DEMO_FONT_DIR", ""), "/mnt/skills/examples/canvas-design/canvas-fonts", "/usr/share/fonts/truetype/dejavu"]
+    for d in dirs:
+        for n in names:
+            p = os.path.join(d, n)
+            if d and os.path.exists(p):
+                return ImageFont.truetype(p, FONT_SIZE)
+    raise SystemExit("no monospace font found: set DEMO_FONT_DIR")
+FONT = _font(["GeistMono-Regular.ttf", "DejaVuSansMono.ttf"])
+BOLD = _font(["GeistMono-Bold.ttf", "DejaVuSansMono-Bold.ttf"])
 CW = round(FONT.getlength("M"))
 LH = FONT_SIZE + 6
 PAD_X, PAD_TOP, PAD_BOTTOM, BAR = 18, 14, 16, 34
 W = PAD_X * 2 + CW * COLS
 H = BAR + PAD_TOP + LH * ROWS + PAD_BOTTOM
 
-BG = (13, 17, 23); BARBG = (22, 27, 34); FG = (230, 237, 243); DIM = (125, 133, 144)
-COLORS = {31: (255, 123, 114), 32: (63, 185, 80), 33: (210, 153, 34), 36: (121, 192, 255)}
-PROMPT = (63, 185, 80)
+# The "registre" palette: ink on paper, one red. Same tokens as the website.
+BG = (236, 233, 225); BARBG = (227, 223, 212); FG = (20, 20, 18); DIM = (98, 93, 83)
+COLORS = {31: (180, 45, 20), 32: (46, 94, 58), 33: (138, 90, 0), 36: (20, 20, 18)}
+RULE = (212, 207, 194); INK = (20, 20, 18); RED = (210, 56, 27)
+PROMPT = RED
 
 store = tempfile.mkdtemp()
 env = dict(os.environ, COUNTERSIGNED_DIR=store, FORCE_COLOR="1")
@@ -96,10 +106,15 @@ def draw(cursor=None):
     img = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(img)
     d.rectangle([0, 0, W, BAR], fill=BARBG)
-    for i, col in enumerate([(255, 95, 86), (255, 189, 46), (39, 201, 63)]):
-        d.ellipse([16 + i * 20, 12, 28 + i * 20, 24], fill=col)
-    title = "countersigned: plan / approve / apply for AI agent actions"
-    d.text(((W - FONT.getlength(title)) / 2, 9), title, font=FONT, fill=DIM)
+    d.line([0, BAR, W, BAR], fill=INK, width=2)
+    d.rectangle([0, 0, W - 1, H - 1], outline=INK, width=2)
+    d.ellipse([18, 11, 31, 24], outline=RED, width=2)
+    d.ellipse([22, 15, 27, 20], fill=RED)
+    d.text((40, 9), "COUNTERSIGNED", font=FONT, fill=INK)
+    title = "TERMINAL \u00b7 FIG. 3"
+    d.text((W - 20 - FONT.getlength(title), 9), title, font=FONT, fill=DIM)
+    for y in range(BAR + PAD_TOP + LH - 4, H - PAD_BOTTOM, LH):
+        d.line([2, y, W - 3, y], fill=RULE, width=1)
     visible = buf[-ROWS:]
     for r, segs in enumerate(visible):
         x = PAD_X

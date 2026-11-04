@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>countersigned brand templates</title>
+<link rel="stylesheet" href="brand.css">
+<style>
+  body { padding: 0; }
+  section { display: none; }
+  section.on { display: block; }
+
+  /* ---------- README banner ---------- */
+  #banner .frame { width: 1280px; height: 440px; }
+  #banner .body { position: relative; padding: 40px 44px 0 44px; display: grid; grid-template-columns: 1fr 340px; gap: 40px; }
+  #banner h1 { font-size: 98px; }
+  #banner .sub { margin: 24px 0 0; font-size: 20px; color: var(--ink-2); max-width: 640px; line-height: 1.45; }
+  #banner .card { margin-top: 6px; border: 1.5px solid var(--ink); background: var(--paper-3); box-shadow: 6px 6px 0 var(--ink); transform: rotate(0.6deg); }
+  #banner .card .row { display: flex; justify-content: space-between; padding: 9px 14px; border-bottom: 1px dashed var(--rule); font-family: var(--mono); font-size: 12px; }
+  #banner .card .row:first-child { border-bottom: 1.5px solid var(--ink); }
+  #banner .card .sig { position: relative; height: 128px; border-top: 1.5px solid var(--ink); }
+  #banner .card .sig svg.hand { position: absolute; left: 14px; top: 26px; width: 230px; }
+  #banner .card .sig .stamp { position: absolute; right: 10px; top: 12px; width: 200px; transform: rotate(-9deg); opacity: 0.92; }
+  #banner .red { color: var(--red-text); }
+
+  /* ---------- slim doc header ---------- */
+  #doc .frame { width: 1280px; height: 230px; }
+  #doc .body { position: relative; padding: 26px 44px; display: flex; justify-content: space-between; align-items: flex-end; height: 178px; }
+  #doc h1 { font-size: 104px; }
+  #doc .side { text-align: right; color: var(--mute); line-height: 1.9; }
+  #doc .side b { color: var(--ink); font-weight: 500; }
+
+  /* ---------- flow diagram ---------- */
+  #flow .frame { width: 1280px; height: 560px; }
+  #flow .body { position: relative; padding: 30px 44px; }
+  .lanes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin-top: 18px; border-top: 1.5px solid var(--ink); }
+  .lane { padding: 18px 26px 18px 0; border-right: 1px solid var(--rule); min-height: 360px; position: relative; }
+  .lane + .lane { padding-left: 26px; }
+  .lane:last-child { border-right: 0; }
+  .lane .no { color: var(--red-text); }
+  .lane h3 { font-family: var(--display); font-weight: 300; font-size: 68px; text-transform: uppercase; margin: 8px 0 14px; line-height: 0.9; }
+  .lane ol { list-style: none; margin: 0; padding: 0; }
+  .lane li { font-family: var(--mono); font-size: 14px; padding: 9px 0; border-bottom: 1px dashed var(--rule); display: flex; gap: 10px; }
+  .lane li span { color: var(--mute); width: 22px; }
+  .lane .who { position: absolute; bottom: 10px; left: 0; right: 26px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mute); }
+  .lane + .lane .who { left: 26px; }
+  .lane .who b { color: var(--red-text); font-weight: 500; }
+  .arrow { position: absolute; top: 46%; right: -20px; width: 40px; height: 40px; background: var(--paper); border: 1.5px solid var(--ink); border-radius: 50%; display: grid; place-items: center; font-family: var(--mono); font-size: 18px; z-index: 2; }
+  .ledgerbar { margin-top: 14px; display: flex; gap: 10px; align-items: center; font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; color: var(--mute); }
+  .ledgerbar i { font-style: normal; border: 1px solid var(--rule); padding: 4px 8px; background: var(--paper-3); color: var(--ink); }
+
+  /* ---------- lifecycle ---------- */
+  #life .frame { width: 1280px; height: 520px; }
+  #life .body { position: relative; padding: 30px 44px; }
+  #life svg { width: 1192px; height: 380px; margin-top: 18px; }
+  #life .node rect { fill: var(--paper-3); stroke: var(--ink); stroke-width: 1.5; }
+  #life .node.red rect { stroke: var(--red); }
+  #life .node text { font-family: var(--mono); font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; fill: var(--ink); }
+  #life .node.red text { fill: var(--red-text); }
+  #life .edge { stroke: var(--ink); stroke-width: 1.3; fill: none; marker-end: url(#a); }
+  #life .edge.red { stroke: var(--red); marker-end: url(#ar); }
+  #life .lbl, #life .node text.sub { font-family: var(--mono); font-size: 11.5px; fill: var(--mute); letter-spacing: 0.04em; text-transform: none; }
+</style>
+</head>
+<body>
+
+<section id="banner">
+  <div class="frame grain ruled">
+    <div class="strip mono"><span><span class="seal"></span>countersigned</span><span class="muted">Form CS-01 · rev <span data-version>0.2.0</span></span><span>MIT · zero dependencies · MCP</span></div>
+    <div class="margin-rule"></div>
+    <div class="body">
+      <div>
+        <h1 class="display">Your agent proposes.<br>A human <em>countersigns.</em></h1>
+        <p class="sub">Terraform-style plan / approve / apply for AI agent actions. Drift checks, idempotency keys, verified completion, saga rollback, a tamper-evident ledger.</p>
+      </div>
+      <div class="card">
+        <div class="row"><span>PLAN PL_MW2H8E0E8C5A</span><span class="red">APPROVED</span></div>
+        <div class="row"><span>0 reschedule_order</span><span>✓</span></div>
+        <div class="row"><span>1 set_reorder_point</span><span>✓</span></div>
+        <div class="row"><span>2 email_supplier <span class="red">irrev.</span></span><span>✓</span></div>
+        <div class="sig">
+          <svg class="hand" viewBox="0 0 230 80"><path d="M30 18 C 12 22, 6 50, 18 60 C 30 66, 38 50, 40 42 C 40 56, 46 62, 52 50 C 56 40, 58 56, 62 58 C 66 30, 70 8, 70 8 C 66 30, 64 56, 70 60 C 76 56, 80 44, 84 56 C 88 60, 92 44, 96 52 C 100 60, 104 40, 108 44 C 106 52, 112 58, 116 56 C 122 28, 124 12, 124 12 C 120 40, 120 58, 128 60 C 134 52, 138 48, 142 58 C 148 50, 152 44, 156 54 C 162 50, 172 44, 190 40 M 26 72 C 80 70, 140 68, 210 52" fill="none" stroke="#141412" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="stamp" viewBox="0 0 260 120"><defs><filter id="ink"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="d"/><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="3" result="blot"/><feColorMatrix in="blot" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.55" result="mask"/><feComposite in="d" in2="mask" operator="in"/></filter></defs><g filter="url(#ink)"><rect x="6" y="6" width="248" height="108" rx="6" fill="none" stroke="currentColor" stroke-width="5"/><rect x="14" y="14" width="232" height="92" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="130" y="64" text-anchor="middle" class="stamp-word" textLength="196" lengthAdjust="spacingAndGlyphs">APPROVED</text><text x="130" y="92" text-anchor="middle" class="stamp-small" textLength="196" lengthAdjust="spacingAndGlyphs">SHA256 9A577C843AD4A880</text></g></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="doc">
+  <div class="frame grain">
+    <div class="strip mono"><span><span class="seal"></span>countersigned</span><span class="muted" data-form>Form CS-02</span><span data-kicker>Contributing</span></div>
+    <div class="body">
+      <h1 class="display" data-title>Contributing</h1>
+      <div class="side mono" data-side>Filed under<br><b>docs</b></div>
+    </div>
+  </div>
+</section>
+
+<section id="flow">
+  <div class="frame grain">
+    <div class="strip mono"><span><span class="seal"></span>countersigned</span><span class="muted">Fig. 1 · how a plan moves</span><span>plan → countersign → apply</span></div>
+    <div class="body">
+      <div class="lanes">
+        <div class="lane">
+          <span class="mono no">§ 01</span>
+          <h3>Plan</h3>
+          <ol><li><span>a</span>observe the state it depends on</li><li><span>b</span>check business rules</li><li><span>c</span>preview the exact effects</li><li><span>d</span>policy decides: allow, ask, deny</li></ol>
+          <p class="who">the agent · <b>nothing changes</b></p>
+          <div class="arrow">→</div>
+        </div>
+        <div class="lane">
+          <span class="mono no">§ 02</span>
+          <h3>Countersign</h3>
+          <ol><li><span>a</span>a human reads intent and effects</li><li><span>b</span>signs the plan's SHA-256</li><li><span>c</span>the requester cannot sign</li><li><span>d</span>the approval expires</li></ol>
+          <p class="who">a person · <b>outside the agent's tools</b></p>
+          <div class="arrow">→</div>
+        </div>
+        <div class="lane">
+          <span class="mono no">§ 03</span>
+          <h3>Apply</h3>
+          <ol><li><span>a</span>re-observe: drift? refuse</li><li><span>b</span>execute with idempotency keys</li><li><span>c</span>verify against the real system</li><li><span>d</span>on failure, compensate in reverse</li></ol>
+          <p class="who">the gate · <b>exactly once</b></p>
+        </div>
+      </div>
+      <div class="ledgerbar">every event → <i>plan.created</i><i>plan.approved</i><i>step.intent</i><i>step.succeeded</i><i>apply.finished</i> → hash-chained ledger</div>
+    </div>
+  </div>
+</section>
+
+<section id="life">
+  <div class="frame grain">
+    <div class="strip mono"><span><span class="seal"></span>countersigned</span><span class="muted">Fig. 2 · lifecycle of a plan</span><span>statuses</span></div>
+    <div class="body">
+      <svg viewBox="0 0 1192 380">
+        <defs>
+          <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#141412"/></marker>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#d2381b"/></marker>
+        </defs>
+        <g class="node"><rect x="0" y="160" width="130" height="46"/><text x="65" y="188" text-anchor="middle">plan()</text></g>
+        <g class="node"><rect x="250" y="60" width="200" height="46"/><text x="350" y="88" text-anchor="middle">pending approval</text></g>
+        <g class="node"><rect x="250" y="160" width="200" height="46"/><text x="350" y="188" text-anchor="middle">approved</text></g>
+        <g class="node red"><rect x="250" y="280" width="200" height="46"/><text x="350" y="308" text-anchor="middle">denied</text></g>
+        <g class="node red"><rect x="560" y="0" width="150" height="46"/><text x="635" y="28" text-anchor="middle">rejected</text></g>
+        <g class="node red"><rect x="560" y="96" width="150" height="46"/><text x="635" y="124" text-anchor="middle">expired</text></g>
+        <g class="node red"><rect x="560" y="280" width="150" height="46"/><text x="635" y="308" text-anchor="middle">stale</text></g>
+        <g class="node"><rect x="820" y="160" width="150" height="46"/><text x="895" y="188" text-anchor="middle">applying</text></g>
+        <g class="node"><rect x="1010" y="54" width="182" height="58"/><text x="1101" y="80" text-anchor="middle">applied</text><text class="sub" x="1101" y="100" text-anchor="middle">all steps verified</text></g>
+        <g class="node"><rect x="1010" y="154" width="182" height="58"/><text x="1101" y="180" text-anchor="middle">compensated</text><text class="sub" x="1101" y="200" text-anchor="middle">rolled back cleanly</text></g>
+        <g class="node red"><rect x="1010" y="254" width="182" height="58"/><text x="1101" y="280" text-anchor="middle">failed</text><text class="sub" x="1101" y="300" text-anchor="middle">a human must look</text></g>
+
+        <path class="edge" d="M130 170 C 180 150, 200 88, 248 84"/>
+        <path class="edge" d="M130 183 L 248 183"/>
+        <path class="edge red" d="M130 196 C 180 220, 200 300, 248 303"/>
+        <text class="lbl" x="6" y="140">needs a human</text>
+        <text class="lbl" x="140" y="202">policy allows</text>
+        <text class="lbl" x="6" y="232">rule broken</text>
+
+        <path class="edge" d="M350 106 L 350 158"/><text class="lbl" x="358" y="137">approve()</text>
+        <path class="edge red" d="M450 72 C 500 66, 510 26, 558 23"/>
+        <path class="edge red" d="M450 94 C 500 98, 510 118, 558 119"/>
+        <path class="edge red" d="M450 196 C 500 220, 510 300, 558 303"/><text class="lbl" x="566" y="268">drift</text>
+        <path class="edge" d="M450 183 L 818 183"/>
+        <text class="lbl" x="580" y="160">apply() · recheck ok</text>
+        <text class="lbl" x="580" y="176">exactly one caller</text>
+
+        <path class="edge" d="M970 172 C 990 160, 990 84, 1008 83"/>
+        <path class="edge" d="M970 183 L 1008 183"/>
+        <path class="edge red" d="M970 194 C 990 206, 990 282, 1008 283"/>
+        <text class="lbl" x="760" y="352">interrupted? apply refuses.</text>
+        <text class="lbl" x="760" y="370">only an operator calls resume()</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  const id = q.get("t") || "banner";
+  document.getElementById(id).classList.add("on");
+  for (const [k, v] of q) {
+    const el = document.querySelector(`#${id} [data-${k}]`);
+    if (el) el.innerHTML = v;
+  }
+</script>
+</body>
+</html>

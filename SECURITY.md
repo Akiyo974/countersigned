@@ -1,10 +1,14 @@
-# Security policy
+<p align="center"><img src="docs/assets/header-security.png" alt="countersigned · Security policy" width="100%"></p>
 
-## Supported versions
+<p align="center"><sub><a href="README.md">README</a> &nbsp;·&nbsp; <a href="https://akiyo974.github.io/countersigned/">Website</a> &nbsp;·&nbsp; <a href="docs/concepts.md">Concepts</a> &nbsp;·&nbsp; <a href="CONTRIBUTING.md">Contributing</a> &nbsp;·&nbsp; <a href="SECURITY.md">Security</a></sub></p>
+
+---
+
+## § 01 · Supported versions
 
 While the project is below 1.0, only the latest minor release receives fixes.
 
-## Reporting a vulnerability
+## § 02 · Reporting a vulnerability
 
 countersigned is a safety layer, so a bypass is a serious bug. Examples of what counts:
 
@@ -26,13 +30,13 @@ What to expect:
 - an assessment and a fix plan within 7 days;
 - a coordinated release and a published advisory, with credit unless you prefer otherwise.
 
-## Threat model
+## § 03 · Threat model
 
 - **Untrusted:** the agent and everything it sends (tool arguments, plan content, retries).
 - **Trusted:** the operator, the host running the store, and the code of registered actions.
 - Out of scope: an attacker who already controls the host or can write the store directly. The ledger is tamper-evident, not tamper-proof; publish `countersigned ledger head` outside the host and verify with `--head` if that matters.
 
-## Hardening checklist for deployments
+## § 04 · Hardening checklist for deployments
 
 - Never expose `resume()` to an agent; it is an operator action, after confirming the original process is gone.
 
