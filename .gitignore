@@ -3,3 +3,6 @@ dist/
 .countersigned/
 *.tmp
 .DS_Store
+
+# generated at deploy by site/tools/fetch-fonts.mjs
+site/fonts/

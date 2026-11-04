@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>countersigned: your agent proposes, a human countersigns</title>
+<meta name="description" content="Terraform-style plan / approve / apply for AI agent actions. Drift checks, idempotency keys, mandatory verification, saga rollback and a tamper-evident ledger. Zero dependencies, MCP native.">
+<meta property="og:title" content="countersigned">
+<meta property="og:description" content="Your agent proposes. A human countersigns. Then it runs, verified.">
+<meta property="og:image" content="https://akiyo974.github.io/countersigned/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#ECE9E1">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/fonts.css" as="style">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="ink" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="d"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="3" result="blot"/>
+      <feColorMatrix in="blot" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.55" result="mask"/>
+      <feComposite in="d" in2="mask" operator="in"/>
+    </filter>
+    <filter id="bleed"><feGaussianBlur stdDeviation="0.35"/></filter>
+  </defs>
+</svg>
+
+<div class="grain" aria-hidden="true"></div>
+
+<header class="strip mono">
+  <a class="brand" href="#top" aria-label="countersigned, back to top"><span class="seal" aria-hidden="true"></span>countersigned</a>
+  <span class="formno">Form CS-01 &middot; rev <span data-version>0.2.0</span></span>
+  <nav>
+    <a href="#contract">Contract</a>
+    <a href="#ledger">Ledger</a>
+    <a href="#install">Install</a>
+    <a href="https://github.com/Akiyo974/countersigned" rel="noopener">GitHub &nearr;</a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <!-- 01 · the form you sign -->
+  <section class="sheet hero" id="form" aria-labelledby="h-hero">
+    <div class="ruling" aria-hidden="true"></div>
+    <div class="margin-rule" aria-hidden="true"></div>
+
+    <div class="hero-head">
+      <p class="sec mono">&sect; 01 &middot; Plan / approve / apply for AI agent actions</p>
+      <h1 id="h-hero" class="display" data-print>Your agent proposes.<br>A human <em>countersigns.</em></h1>
+      <p class="lede">Agents can read anything. When one wants to change something real, it files a plan: the state it read, the exact effects, the rules it checked. Nothing moves until a person signs that exact plan. Then it runs, every step verified against the real system, and everything lands in a ledger nobody can quietly edit.</p>
+    </div>
+
+    <article class="plan" aria-labelledby="plan-title" data-state="pending">
+      <header class="plan-head mono">
+        <span id="plan-title">Plan <span data-plan-id>pl_mw2h8e0e8c5a</span></span>
+        <span class="status" data-status>Pending approval</span>
+      </header>
+      <dl class="plan-meta">
+        <div><dt class="mono">Intent</dt><dd>Absorb the ACME delay without breaking customer promises</dd></div>
+        <div><dt class="mono">Requested by</dt><dd class="mono">agent &middot; mcp</dd></div>
+      </dl>
+      <ol class="steps">
+        <li data-step="0">
+          <span class="n mono">0</span>
+          <span class="what"><b>reschedule_order</b> <i class="mono rev">compensable</i><br>Ship SO-1001 on Nov 14 instead of Nov 10</span>
+          <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 13 L10 18 L20 5"/></svg></span>
+          <span class="ev mono" data-ev></span>
+        </li>
+        <li data-step="1">
+          <span class="n mono">1</span>
+          <span class="what"><b>set_reorder_point</b> <i class="mono rev">reversible</i><br>FRIDGE-300: 3 &rarr; 6</span>
+          <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 13 L10 18 L20 5"/></svg></span>
+          <span class="ev mono" data-ev></span>
+        </li>
+        <li data-step="2">
+          <span class="n mono">2</span>
+          <span class="what"><b>email_supplier</b> <i class="mono rev irr">irreversible</i><br>Send &ldquo;PO 4471 delay&rdquo; to po@acme.co</span>
+          <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 13 L10 18 L20 5"/></svg></span>
+          <span class="ev mono" data-ev></span>
+        </li>
+      </ol>
+      <p class="hash mono">sha256 <span data-plan-hash>computing&hellip;</span></p>
+
+      <div class="sign">
+        <p class="mono sign-label"><span>Countersign here</span><span class="hint" data-sign-hint>Draw your signature. It is hashed into the plan.</span></p>
+        <div class="pad" data-pad>
+          <canvas data-canvas aria-label="Signature pad. Draw with mouse, pen or finger." role="img"></canvas>
+          <span class="x mono" aria-hidden="true">&times;</span>
+          <div class="stamp" data-stamp aria-hidden="true">
+            <svg viewBox="0 0 260 120">
+              <g filter="url(#ink)">
+                <rect x="6" y="6" width="248" height="108" rx="6" fill="none" stroke="currentColor" stroke-width="5"/>
+                <rect x="14" y="14" width="232" height="92" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                <text x="130" y="64" text-anchor="middle" class="stamp-word" textLength="196" lengthAdjust="spacingAndGlyphs">APPROVED</text>
+                <text x="130" y="92" text-anchor="middle" class="stamp-small" textLength="196" lengthAdjust="spacingAndGlyphs" data-stamp-hash>SHA256 &middot;&middot;&middot;</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+        <div class="sign-actions">
+          <button class="btn ghost mono" type="button" data-sign-for-me>Sign for me</button>
+          <button class="btn ghost mono" type="button" data-clear>Clear</button>
+          <button class="btn mono" type="button" data-apply disabled>Apply &rarr;</button>
+        </div>
+      </div>
+      <p class="report mono" data-report aria-live="polite"></p>
+    </article>
+
+  </section>
+
+  <!-- 02 · incidents -->
+  <section class="sheet" id="why" aria-labelledby="h-why">
+    <p class="sec mono">&sect; 02 &middot; Incident register</p>
+    <h2 id="h-why" class="display" data-print>Prompts don&rsquo;t fix<br>these.</h2>
+    <ol class="incidents">
+      <li data-reveal>
+        <span class="no mono">INC-01</span>
+        <p><b>The world moved after you said yes.</b> A buyer edits the item between approval and execution. The agent writes on top of a value nobody approved it against.</p>
+        <p class="fix mono">Filed: state is snapshotted at plan time, re-observed before apply. Drift refuses the plan. Nothing runs.</p>
+      </li>
+      <li data-reveal>
+        <span class="no mono">INC-02</span>
+        <p><b>The retry sent it twice.</b> Timeout, crash, confused model. The supplier gets the email again. The order is booked again.</p>
+        <p class="fix mono">Filed: one stable idempotency key per step, forwarded downstream. A finished step is never repeated.</p>
+      </li>
+      <li data-reveal>
+        <span class="no mono">INC-03</span>
+        <p><b>&ldquo;Done,&rdquo; it said.</b> The API answered 200. The write never stuck. The agent read success and reported it.</p>
+        <p class="fix mono">Filed: verify() is mandatory and re-reads the system of record. The report carries the evidence.</p>
+      </li>
+      <li data-reveal>
+        <span class="no mono">INC-04</span>
+        <p><b>Half a plan.</b> Step 3 of 4 fails. Steps 1 and 2 already changed things, and nobody undoes them.</p>
+        <p class="fix mono">Filed: compensation runs in reverse. Whatever cannot be undone is listed for a human, never hidden.</p>
+      </li>
+      <li data-reveal>
+        <span class="no mono">INC-05</span>
+        <p><b>It approved itself.</b> The agent that asks also holds the button that says yes.</p>
+        <p class="fix mono">Filed: approval lives outside the agent&rsquo;s tools, pinned to the plan&rsquo;s SHA-256. The requester cannot sign.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 03 · contract -->
+  <section class="sheet" id="contract" aria-labelledby="h-contract">
+    <p class="sec mono">&sect; 03 &middot; The action contract</p>
+    <h2 id="h-contract" class="display" data-print>Six clauses.<br>No fine print.</h2>
+    <div class="contract">
+      <ol class="clauses" role="list">
+        <li data-clause="observe" class="on"><span class="mono">3.1</span><b>observe</b><span>What does this depend on? Snapshotted at plan time, re-checked before apply.</span></li>
+        <li data-clause="check"><span class="mono">3.2</span><b>check</b><span>Business rules. A violation denies the plan before a human is bothered.</span></li>
+        <li data-clause="preview"><span class="mono">3.3</span><b>preview</b><span>The exact effects, in words a person can sign.</span></li>
+        <li data-clause="execute"><span class="mono">3.4</span><b>execute</b><span>The change, with a stable idempotency key to pass downstream.</span></li>
+        <li data-clause="verify"><span class="mono">3.5</span><b>verify</b><span>Proof against the real system. Not optional.</span></li>
+        <li data-clause="compensate"><span class="mono">3.6</span><b>compensate</b><span>The way back. Required unless you declare the action irreversible.</span></li>
+      </ol>
+      <pre class="code mono" aria-label="Example action definition"><code><span class="k">export const</span> setReorderPoint = <span class="f">defineAction</span>({
+  name: <span class="s">"set_reorder_point"</span>,
+  reversibility: <span class="s">"reversible"</span>,
+  input: t.<span class="f">object</span>({ sku: t.<span class="f">string</span>(), reorderPoint: t.<span class="f">integer</span>({ min: 0 }) }),
+
+<span class="ln" data-line="observe">  observe:    ({ sku }) =&gt; erp.<span class="f">getItem</span>(sku),</span>
+<span class="ln" data-line="check">  check:      (_, item) =&gt; (item ? [] : [<span class="s">"item does not exist"</span>]),</span>
+<span class="ln" data-line="preview">  preview:    ({ sku, reorderPoint }, item) =&gt;
+                [{ target: <span class="s">`item:${sku}`</span>, before: item.reorderPoint, after: reorderPoint }],</span>
+<span class="ln" data-line="execute">  execute:    (i, { idempotencyKey }) =&gt; erp.<span class="f">update</span>(i, idempotencyKey),</span>
+<span class="ln" data-line="verify">  verify:     (i) =&gt; erp.<span class="f">getItem</span>(i.sku)?.reorderPoint === i.reorderPoint,</span>
+<span class="ln" data-line="compensate">  compensate: (i, _, { before }) =&gt; erp.<span class="f">update</span>({ ...i, reorderPoint: before.reorderPoint }),</span>
+});</code></pre>
+    </div>
+  </section>
+
+  <!-- 04 · ledger tamper -->
+  <section class="sheet" id="ledger" aria-labelledby="h-ledger">
+    <p class="sec mono">&sect; 04 &middot; Ledger, open to inspection</p>
+    <h2 id="h-ledger" class="display" data-print>Go on.<br>Edit the history.</h2>
+    <p class="lede narrow">Every entry commits to the one before it. Change a single character in any line below and watch what happens to everything after it. This is a real SHA-256 chain, computed in your browser.</p>
+    <div class="book" data-book>
+      <div class="book-head mono"><span>seq</span><span>event</span><span>data (editable)</span><span>hash</span></div>
+      <ol class="entries" data-entries></ol>
+      <div class="book-foot mono">
+        <span data-chain-status>Chain verified</span>
+        <button class="btn ghost mono" type="button" data-restore>Restore original</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 · drift -->
+  <section class="sheet" id="drift" aria-labelledby="h-drift">
+    <p class="sec mono">&sect; 05 &middot; Time of check, time of use</p>
+    <h2 id="h-drift" class="display" data-print>Approved at 3.<br>Not applied at 5.</h2>
+    <div class="drift">
+      <div class="erp">
+        <p class="mono erp-title">ERP &middot; item FRIDGE-300</p>
+        <label class="mono" for="rp">Reorder point</label>
+        <input id="rp" class="erp-field mono" type="number" min="0" max="99" value="3" data-erp>
+        <p class="small">A colleague can change this at any time. Try it, then apply.</p>
+      </div>
+      <div class="drift-plan">
+        <p class="mono">Plan pl_drift &middot; approved by christen</p>
+        <p class="drift-effect">reorder point <span class="val"><span class="mono">3 &rarr; 6</span><svg class="pen-circle" viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden="true"><path d="M150 8 C 260 6, 296 40, 280 76 C 262 112, 70 120, 22 92 C -10 70, 20 20, 120 10 C 150 7, 170 9, 190 14"/></svg></span></p>
+        <button class="btn mono" type="button" data-drift-apply>Apply &rarr;</button>
+        <p class="drift-out mono" data-drift-out aria-live="polite"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 · install -->
+  <section class="sheet" id="install" aria-labelledby="h-install">
+    <p class="sec mono">&sect; 06 &middot; Filing instructions</p>
+    <h2 id="h-install" class="display" data-print>Zero dependencies.<br>Ten minutes.</h2>
+    <div class="install">
+      <div class="cmd mono"><span class="prompt">$</span> <span data-copy-src>npm install countersigned</span><button class="copy mono" type="button" data-copy>Copy</button></div>
+      <div class="cols">
+        <div>
+          <p class="mono k2">For the agent</p>
+          <p>Ships an MCP server: Claude, Cursor and any MCP client get <code class="mono">plan</code>, <code class="mono">get_plan</code> and <code class="mono">apply</code>. Never an approve tool.</p>
+        </div>
+        <div>
+          <p class="mono k2">For the human</p>
+          <p><code class="mono">countersigned list</code>, <code class="mono">show</code>, <code class="mono">approve</code>, <code class="mono">ledger verify</code>. Sign from the terminal, or wire your own UI to the same store.</p>
+        </div>
+        <div>
+          <p class="mono k2">For the auditor</p>
+          <p>A hash-chained ledger in plain files or SQLite. Anchor its head anywhere you trust.</p>
+        </div>
+      </div>
+      <div class="ctas">
+        <a class="btn mono" href="https://github.com/Akiyo974/countersigned" rel="noopener">Read the code &rarr;</a>
+        <a class="btn ghost mono" href="https://github.com/Akiyo974/countersigned/blob/main/docs/concepts.md" rel="noopener">Concepts</a>
+        <a class="btn ghost mono" href="https://www.npmjs.com/package/countersigned" rel="noopener">npm</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot mono">
+  <div class="visit">
+    <span>This page kept a ledger of your visit.</span>
+    <span>head <b data-head>0:&hellip;</b></span>
+  </div>
+  <div class="colophon">
+    <span>MIT licensed &middot; built by <a href="https://christendijoux.com" rel="noopener">Christen Dijoux</a>, Saguenay</span>
+    <span>Big Shoulders Display, Geist, Geist Mono</span>
+  </div>
+</footer>
+
+<aside class="tape mono" data-tape aria-label="Live ledger of this visit">
+  <p class="tape-title">Ledger &middot; this visit</p>
+  <ol data-tape-list></ol>
+</aside>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
