@@ -231,7 +231,7 @@ canvas.addEventListener("pointermove", (e) => {
   for (const ev of e.getCoalescedEvents ? e.getCoalescedEvents() : [e]) addPoint(point(ev));
 });
 const endStroke = () => {
-  if (!current) return;
+  if (!current || autoSigning) return;
   current = null;
   clearTimeout(finalizeTimer);
   finalizeTimer = setTimeout(maybeFinalize, 850);
@@ -326,7 +326,7 @@ async function signForMe() {
 }
 
 function clearPad() {
-  if (applied) return;
+  if (applied || autoSigning) return;
   strokes = [];
   current = null;
   signed = false;
@@ -502,7 +502,7 @@ function renderDrift() {
   driftBtn.textContent = drift.state === "stale" ? "Plan again" : "Apply →";
 }
 
-driftBtn.addEventListener("click", async () => {
+driftBtn.addEventListener("click", () => {
   const now = Number(erp.value);
   if (drift.state === "stale") {
     drift = { before: now, after: now + 3, state: "approved" };
@@ -529,11 +529,11 @@ driftBtn.addEventListener("click", async () => {
     visit.append("plan.stale", { approved: drift.before, found: now }, true);
     return;
   }
-  driftOut.classList.remove("bad");
-  driftOut.textContent = "Recheck ok. Executing…";
-  await wait(500);
+  // Recheck, write and state change happen in one synchronous turn: no window for a late edit,
+  // and a double click finds the plan already applied.
   erp.value = String(drift.after);
   drift.state = "applied";
+  driftOut.classList.remove("bad");
   driftOut.textContent = `Applied and verified: the ERP shows ${drift.after}.`;
   renderDrift();
   visit.append("step.succeeded", { plan: "pl_drift", evidence: { reorderPoint: drift.after } });

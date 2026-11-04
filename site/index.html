@@ -161,13 +161,14 @@
       </ol>
       <pre class="code mono" aria-label="Example action definition"><code><span class="k">export const</span> setReorderPoint = <span class="f">defineAction</span>({
   name: <span class="s">"set_reorder_point"</span>,
+  description: <span class="s">"Change the reorder point of an inventory item."</span>,
   reversibility: <span class="s">"reversible"</span>,
   input: t.<span class="f">object</span>({ sku: t.<span class="f">string</span>(), reorderPoint: t.<span class="f">integer</span>({ min: 0 }) }),
 
 <span class="ln" data-line="observe">  observe:    ({ sku }) =&gt; erp.<span class="f">getItem</span>(sku),</span>
 <span class="ln" data-line="check">  check:      (_, item) =&gt; (item ? [] : [<span class="s">"item does not exist"</span>]),</span>
 <span class="ln" data-line="preview">  preview:    ({ sku, reorderPoint }, item) =&gt;
-                [{ target: <span class="s">`item:${sku}`</span>, before: item.reorderPoint, after: reorderPoint }],</span>
+                [{ target: <span class="s">`item:${sku}`</span>, op: <span class="s">"update"</span>, before: item.reorderPoint, after: reorderPoint }],</span>
 <span class="ln" data-line="execute">  execute:    (i, { idempotencyKey }) =&gt; erp.<span class="f">update</span>(i, idempotencyKey),</span>
 <span class="ln" data-line="verify">  verify:     (i) =&gt; erp.<span class="f">getItem</span>(i.sku)?.reorderPoint === i.reorderPoint,</span>
 <span class="ln" data-line="compensate">  compensate: (i, _, { before }) =&gt; erp.<span class="f">update</span>({ ...i, reorderPoint: before.reorderPoint }),</span>
