@@ -32,7 +32,7 @@ jobs:
         run: |
           v=$(node -p "require('./package.json').version")
           sed -i "s|<span data-version>[^<]*</span>|<span data-version>${v}</span>|" site/index.html
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
